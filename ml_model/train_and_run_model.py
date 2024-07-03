@@ -7,21 +7,18 @@
 # import packages/libraries
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import GridSearchCV, KFold
-from sklearn.model_selection import cross_val_score
-import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn import preprocessing, svm
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
-from scipy import stats
-import seaborn as sns
-import geopandas as gpd
-import joblib
 from sklearn.model_selection import RandomizedSearchCV
+from scipy import stats
+import joblib
 import time
 import os
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_error
+import rasterio
 
 print("imports done")
 
@@ -113,9 +110,7 @@ def prepare_data(df_path, lagosid_path, lulc_path, random_state=621, test_size=0
 
 
 # define evaluate function
-from sklearn.metrics import r2_score
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import mean_absolute_error
+
 
 def evaluate(model, test_features, test_labels, mod_name):
     predictions = model.predict(test_features)
@@ -258,9 +253,7 @@ def train_model():
 
 
 ## Making the four extra bands data from constants
-import rasterio
-import xarray as xr
-import numpy as np
+
 
 # load raster data
 # open the existing raster file for reading
