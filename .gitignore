@@ -9,7 +9,7 @@ __pycache__
 
 venv/
 
-simpler_venv/
+*venv/
 
 .ipynb_checkpoints/
 
