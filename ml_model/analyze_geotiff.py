@@ -7,6 +7,8 @@ print(
 input_tif = input("Enter the filename: ") or "S2_Chautauqua_v2_predictions.tif"
 
 with rasterio.open(input_tif) as src:
+    tags = src.tags()
+    print("Tags: ", tags)
     top_left = src.transform * (0, 0)
     bottom_right = src.transform * (src.width, src.height)
     crs = src.crs
