@@ -1,0 +1,8 @@
+.env
+
+*.csv
+
+*.json
+
+*.pickle
+
