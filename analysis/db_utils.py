@@ -38,31 +38,16 @@ def download_prediction_image_by_record_id(record_id: str) -> bytes:
 def download_first_prediction_image_by_date_range(
     lagoslakeid: int, start_date: str, end_date: str
 ):
-    start_date_obj = parse_date_string(start_date)
-    end_date_obj = parse_date_string(end_date)
-
-    # This is probably best done database side, need to add lagoslikeid field to prediction collection
-    # Because if there are 1000+ spatialPredictions, this will be a lot of network requests
-    lake = client.collection("lakes").get_first_list_item(f"lagoslakeid={lagoslakeid}")
-    spatial_predictions = lake.spatial_predictions
-
-    spatial_predictions_expanded = []
-    for spatial_prediction_id in spatial_predictions:
-        spatial_prediction = client.collection("spatialPredictionMaps").get_one(
-            spatial_prediction_id
-        )
-        spatial_prediction.date = datetime.fromisoformat(spatial_prediction.date)
-        if (
-            spatial_prediction.date > end_date_obj
-            or spatial_prediction.date < start_date_obj
-        ):
-            continue  # Date is outside of range
-
-        spatial_predictions_expanded.append(spatial_prediction)
-
-    spatial_predictions_expanded.sort(key=(lambda a: a.date))
+    # Do filtering database side to avoid making excessive requests here
+    filter_str = f'lagoslakeid={lagoslakeid} && date <= "{end_date} 23:59:59.999Z" && date >= "{start_date} 00:00:00.000Z"'
+    spatial_predictions = client.collection("spatialPredictionMaps").get_full_list(
+        query_params={
+            "filter": filter_str,
+            "sort": "+date",  # Ascending order by date
+        }
+    )
 
     # First value is the earliest record within the range
-    record = spatial_predictions_expanded[0]
+    record = spatial_predictions[0]
     downloaded_raster = download_raster_image_bytes_from_record(record)
     return downloaded_raster, record.date
