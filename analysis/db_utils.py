@@ -31,7 +31,9 @@ def parse_date_string(date_str: str):
 
 # Download image by spatialPredictionMaps record id and return path
 def download_prediction_image_by_record_id(record_id: str) -> bytes:
-    record = client.collection("spatialPredictionMaps").get_one(record_id)
+    record = client.collection("spatialPredictionMaps").get_one(
+        record_id, query_params={"requestKey": None}
+    )
     return download_raster_image_bytes_from_record(record)
 
 
