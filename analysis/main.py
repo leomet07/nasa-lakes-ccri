@@ -1,43 +1,31 @@
 import db_utils
 import raster_utils
 import time
+from pprint import pprint
+from tqdm import tqdm
+from matplotlib import pyplot as plt
 
-spatial_prediction_id = input("Enter a spatial prediciton map record's id: ")
-
-downloaded_raster_bytes = db_utils.download_prediction_image_by_record_id(
-    spatial_prediction_id
+spatial_predictions = db_utils.get_prediction_records_by_date_range(
+    81353, "2019-01-01", "2019-12-31"
 )
+pprint(list(map(vars, spatial_predictions)))
+print("# of predictions: ", len(spatial_predictions))
 
-max_val, mean_val, stdev = raster_utils.get_max_from_predictions_raster_bytes(
-    downloaded_raster_bytes
-)
-print(f"Max from {spatial_prediction_id}: {max_val}µg/L")
-print(f"Mean from {spatial_prediction_id}: {mean_val}µg/L")
-print(f"STDEV from {spatial_prediction_id}: {stdev}")
+x = []
+y = []
 
+for spatial_prediction in tqdm(spatial_predictions):
+    results_array = raster_utils.get_max_from_predictions_raster_bytes(
+        db_utils.download_prediction_image_by_record_id(spatial_prediction.id)
+    )  # max_val, mean_val, stdev
 
-# def test():
-#     downloaded_raster_bytes, return_date = (
-#         db_utils.download_first_prediction_image_by_date_range(
-#             100965, "2017-05-31", "2020-05-31"
-#         )
-#     )
-
-#     max_val = raster_utils.get_max_from_predictions_raster_bytes(
-#         downloaded_raster_bytes
-#     )
-#     print(f"Max from {return_date}: {max_val}µg/L")
+    x.append(spatial_prediction.date)
+    y.append(results_array[1])  # y will be means
 
 
-# start_time = time.time()
-
-# test()
-
-# end_time = time.time()
-
-# elapsed_time = end_time - start_time
-
-# print(elapsed_time)
-
-
-# wfwglyjn82le9z5
+plt.plot(x, y, label="2019")
+plt.legend()
+plt.title("Mean Chl-A vs Time")
+plt.xlabel("Time")
+plt.ylabel("Chl-a")
+plt.show()

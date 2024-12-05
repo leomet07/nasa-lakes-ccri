@@ -38,16 +38,23 @@ def download_prediction_image_by_record_id(record_id: str) -> bytes:
 def download_first_prediction_image_by_date_range(
     lagoslakeid: int, start_date: str, end_date: str
 ):
+    spatial_predictions = get_prediction_records_by_date_range(
+        lagoslakeid, start_date, end_date
+    )
+    # First value is the earliest record within the range
+    record = spatial_predictions[0]
+    downloaded_raster = download_raster_image_bytes_from_record(record)
+    return downloaded_raster, record.date
+
+
+def get_prediction_records_by_date_range(
+    lagoslakeid: int, start_date: str, end_date: str
+):
     # Do filtering database side to avoid making excessive requests here
     filter_str = f'lagoslakeid={lagoslakeid} && date <= "{end_date} 23:59:59.999Z" && date >= "{start_date} 00:00:00.000Z"'
-    spatial_predictions = client.collection("spatialPredictionMaps").get_full_list(
+    return client.collection("spatialPredictionMaps").get_full_list(
         query_params={
             "filter": filter_str,
             "sort": "+date",  # Ascending order by date
         }
     )
-
-    # First value is the earliest record within the range
-    record = spatial_predictions[0]
-    downloaded_raster = download_raster_image_bytes_from_record(record)
-    return downloaded_raster, record.date
