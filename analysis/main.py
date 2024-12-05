@@ -4,11 +4,12 @@ import time
 from pprint import pprint
 from tqdm import tqdm
 from matplotlib import pyplot as plt
+from datetime import datetime
 
 spatial_predictions = db_utils.get_prediction_records_by_date_range(
     81353, "2019-01-01", "2019-12-31"
 )
-pprint(list(map(vars, spatial_predictions)))
+
 print("# of predictions: ", len(spatial_predictions))
 
 x = []
@@ -19,7 +20,8 @@ for spatial_prediction in tqdm(spatial_predictions):
         db_utils.download_prediction_image_by_record_id(spatial_prediction.id)
     )  # max_val, mean_val, stdev
 
-    x.append(spatial_prediction.date)
+    date_obj = datetime.fromisoformat(spatial_prediction.date)
+    x.append(date_obj)
     y.append(results_array[1])  # y will be means
 
 
