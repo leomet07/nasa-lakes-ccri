@@ -38,7 +38,6 @@ def get_max_from_predictions_raster_bytes(raster: bytes) -> float:
 
 
 def get_max_from_predictions_raster_file(file_path: str) -> int:
-    print(f"Opening {file_path}...")
     with rasterio.open(file_path) as src:
         return run_analytics_on_opened_raster(src)
 
