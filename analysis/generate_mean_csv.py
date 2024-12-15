@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 import os
 import json
 import pandas as pd
+from datetime import datetime
 
 ROOT_DB_FILEPATH = os.getenv("ROOT_DB_FILEPATH") # for accessing files manually
 ACCESS_STORAGE_MODE = "local" # "web" | "local" # Web DB OR Copy of Web DB cloned to local computer
@@ -33,16 +34,21 @@ for index in tqdm(range(len(all_spatial_predictions_list))):
     else:
         raise Exception('ACCESS_STORAGE_MODE must be either "local" or "web"')
     
-    spatial_prediction["max"] = str(results_array[0])
-    spatial_prediction["mean"] = str(results_array[1])
-    spatial_prediction["std"] = str(results_array[2])
+    spatial_prediction["max"] = results_array[0]
+    spatial_prediction["mean"] = results_array[1]
+    spatial_prediction["std"] = results_array[2]
+    spatial_prediction["date"] = datetime.fromisoformat(spatial_prediction["date"])
 
-df = pd.DataFrame.from_records(all_spatial_predictions_list)
+predictions_df = pd.DataFrame.from_records(all_spatial_predictions_list)
 
-df.to_csv("summer_means_full.csv")
-# Restrict DF to reduce file size
-df = df[["lagoslakeid", "date", "max", "mean", "std"]]
-df.to_csv("summer_means.csv")
+predictions_df = predictions_df[["lagoslakeid", "date", "max", "mean", "std"]] # Restrict predictions_df to reduce file size
+predictions_df.to_csv("summer_means.csv", date_format=f'%Y%m%d', float_format="%f", index=False) # note %f defaults to 6 digits of precision (won't do crazy scientific notation as str() does)
 
-with open("all_predictions_dump.json", "w") as json_file:
-    json_file.write(json.dumps(all_spatial_predictions_list, indent=4))
+# Get super means!
+print("Total rows: ", len(predictions_df))
+def get_august_mean_for_year(df, year: int):
+    df_new = df[(df["date"] > f'{year}-07-25') & (df["date"] < f'{year}-09-05')]
+    return df_new["mean"].mean(axis=0) # axis = 0 for columnwise mean
+
+for year in range(2019, 2024):
+    print(f"Mean for {year}: ", get_august_mean_for_year(predictions_df, year))
