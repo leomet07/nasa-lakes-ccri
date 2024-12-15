@@ -9,7 +9,7 @@ def run_analytics_on_opened_raster(src):
     num_bands = src.count  # This should be 1 for the output of the prediction file
     if num_bands != 1:
         raise Exception(
-            f"Number of bands in {file_path} should be 1 instead of {num_bands}. Are you sure this file is chl_a predictions from the model?"
+            f"Number of bands should be 1 instead of {num_bands}. Are you sure this file is chl_a predictions from the model?"
         )
     height = src.height
     width = src.width
