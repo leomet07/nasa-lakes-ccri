@@ -56,3 +56,26 @@ def get_august_mean_for_year(df, year: int):
 
 for year in range(2019, 2024):
     print(f"Mean for {year}: ", get_august_mean_for_year(predictions_df, year))
+
+
+# Inspect very low STD (aka uniform prediction) lakes
+predictions_df["is_low_std"] = predictions_df.apply(lambda row: row["std"] < 0.000003, axis=1)
+predictions_df.to_csv("summer_means_inspect.csv", date_format=f'%Y%m%d', float_format="%f", index=False) # note %f defaults to 6 digits of precision (won't do crazy scientific notation as str() does)
+
+sus_preds = len(predictions_df[predictions_df["is_low_std"] == True])
+insitu_sus_preds = len(predictions_df[(predictions_df["is_low_std"] == True) & (predictions_df["insitu"] == True)])
+non_insitu_sus_preds = len(predictions_df[(predictions_df["is_low_std"] == True) & (predictions_df["insitu"] == False)])
+print("# of predictions with suspiciously low standard deviations: ", sus_preds)
+print("# of predictions with suspiciously low standard deviations INSITU: ", insitu_sus_preds)
+print("# of predictions with suspiciously low standard deviations NOT INSITU: ", non_insitu_sus_preds)
+
+insitu_preds = len(predictions_df[predictions_df["insitu"] == True])
+non_insitu_preds = len(predictions_df[predictions_df["insitu"] == False])
+print("# of predictions insitu: ", insitu_preds)
+print("# of predictions not insitu: ", non_insitu_preds)
+
+ratio_sus_insitu_to_total_insitu_preds = insitu_sus_preds / insitu_preds
+ratio_sus_non_insitu_to_total_non_insitu_preds = non_insitu_sus_preds / non_insitu_preds
+
+print("Ratio of suspiciously low standard deviation lake-with-insitu-available predictions to total lake-with-insitu-available predictions: ", ratio_sus_insitu_to_total_insitu_preds)
+print("Ratio of suspiciously low standard deviation lake-without-insitu-available predictions to total lake-without-insitu-available predictions: ", ratio_sus_non_insitu_to_total_non_insitu_preds)
