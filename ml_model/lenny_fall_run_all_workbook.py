@@ -30,11 +30,36 @@ client = PocketBase(os.getenv("PUBLIC_POCKETBASE_URL"))
 admin_data = client.admins.auth_with_password(os.getenv("POCKETBASE_ADMIN_EMAIL"), os.getenv("POCKETBASE_ADMIN_PASSWORD"))
 
 
-def add_suffix_to_filename(filename : str, suffix : str):
-  parts = filename.split(".")
-  return parts[0] + f"_{suffix}." + ".".join(parts[1:])
+session_uuid = str(uuid.uuid4())
+print("Current session id: ", session_uuid)
 
 
+input_tif_folder = "input_test" # Specify the folder inside of the tar
+paths = os.listdir(input_tif_folder)
+print("Number of files to run: ", len(paths))
+
+png_out_folder = os.path.join("png_out", f"png_out_{session_uuid}")
+if not os.path.exists(png_out_folder):
+    os.makedirs(png_out_folder)
+    
+tif_out_folder = os.path.join("tif_out", f"tif_out_{session_uuid}")
+if not os.path.exists(tif_out_folder):
+    os.makedirs(tif_out_folder)
+
+session_statues_path = "session_statuses/"
+if not os.path.exists(session_statues_path):
+    os.makedirs(session_statues_path)
+
+error_paths = []
+
+
+def add_suffix_to_filename_at_tif_path(filename : str, suffix : str):
+    parts = filename.split(".")
+    newfilename =  parts[0] + f"_{suffix}." + ".".join(parts[1:])
+
+    to_tif_folder_path = os.path.join(tif_out_folder, newfilename.split("/")[-1])
+
+    return to_tif_folder_path
 
 def prepare_data(df_path, lagosid_path, lulc_path, random_state=621, test_size=0.1):
     # read csvs
@@ -166,7 +191,7 @@ def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float,
     profile.update(count=13)  # (update count to include original bands + 4 new bands)
 
     # output GeoTIFF file
-    modified_tif = add_suffix_to_filename(input_tif, "modified")
+    modified_tif = add_suffix_to_filename_at_tif_path(input_tif, "modified")
 
     # write the modified raster data to the new GeoTIFF file
     with rasterio.open(modified_tif, 'w', **profile) as dst:
@@ -308,7 +333,7 @@ print(f"RMSE: {rmse}")
 
 
 def predict(input_tif : str, id: int, display = True):
-    modified_tif = add_suffix_to_filename(input_tif, "modified")
+    modified_tif = add_suffix_to_filename_at_tif_path(input_tif, "modified")
     with rasterio.open(modified_tif) as src:
         raster_data = src.read()
         profile = src.profile
@@ -348,7 +373,7 @@ def predict(input_tif : str, id: int, display = True):
     predictions_raster = predictions.reshape(n_rows, n_cols)
 
     # save the prediction result as a new raster file
-    output_tif = add_suffix_to_filename(input_tif, "predicted")
+    output_tif = add_suffix_to_filename_at_tif_path(input_tif, "predicted")
 
     with rasterio.open(output_tif, 'w',
                       driver='GTiff',
@@ -393,7 +418,6 @@ def save_png(input_tif, out_folder, predictions_raster, date, scale, display=Tru
     # cbar.set_ticklabels([str(val) for val in values])
 
     # png filename
-    output_tif = add_suffix_to_filename(input_tif, "predicted")
     output_png = stem + ".png"
     output_png_path = os.path.join(out_folder, output_png)
     #print("Out folder: ", out_folder)
@@ -406,10 +430,6 @@ def save_png(input_tif, out_folder, predictions_raster, date, scale, display=Tru
     else:
         plt.close(fig)
     return output_png_path
-
-
-
-session_uuid = str(uuid.uuid4())
 
 
 def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path : str, datestr : str, corners : list, scale : int):
@@ -448,25 +468,6 @@ def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path 
     lake_result = client.collection("lakes").update(lake_db_id, {"spatialPredictions+" : created.id}) # here the library does not snakeCase
 
     # print("Lake result: ",lake_result.__dict__)
-
-
-
-input_tif_folder = "input_test" # Specify the folder inside of the tar
-paths = os.listdir(input_tif_folder)
-
-print("Number of files to run: ", len(paths))
-
-png_out_folder = os.path.join("png_out", f"png_out_{session_uuid}")
-if not os.path.exists(png_out_folder):
-    os.makedirs(png_out_folder)
-
-session_statues_path = "session_statuses/"
-if not os.path.exists(session_statues_path):
-    os.makedirs(session_statues_path)
-
-error_paths = []
-
-print("Current session id: ", session_uuid)
 
 
 for path_tif in tqdm(paths):
