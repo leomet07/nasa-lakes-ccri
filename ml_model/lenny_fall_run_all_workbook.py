@@ -111,25 +111,8 @@ def predict(input_tif : str, id: int, display = True):
     means = np.nanmean(raster_data_2d, axis=0)
     raster_data_2d[nan_mask] = np.take(means, np.where(nan_mask)[1])
 
-
-    time_start = time.time()
-
-    #print(f"Predicting on {modified_tif}")
-    #print("Time start: ", time_start)
-
     # perform the prediction
-    # NOTE::::: best_model (from a search upon interval) or known_fast_model (from GIVEN params)
-    # predictions = best_model.predict(raster_data_2d)
-    # predictions = known_fast_model.predict(raster_data_2d)
     predictions = model_training.andrew_model.predict(raster_data_2d)
-
-    time_end = time.time()
-    time_diff = time_end - time_start
-    #print("Predicted at ", time_end)
-    #print(f"Elapsed predicting time: {time_diff} seconds")
-
-    # max_value = predictions.max()
-    # max_values[id]= max_value
 
     # reshape the predictions back to the original raster shape
     predictions_raster = predictions.reshape(n_rows, n_cols)
@@ -154,10 +137,7 @@ def predict(input_tif : str, id: int, display = True):
         plt.title('Predicted Values')
         plt.show()
 
-    #print(f"Predictions saved to {output_tif}")
     return output_tif, predictions_raster
-
-
 
 
 def save_png(input_tif, out_folder, predictions_raster, date, scale, display=True):
@@ -167,13 +147,13 @@ def save_png(input_tif, out_folder, predictions_raster, date, scale, display=Tru
     min_value = 0
     max_value = 60
     increment = 5
-    values = np.arange(min_value, max_value + increment, increment)
 
     fig = plt.figure(figsize=(10, 8))
     plt.imshow(masked_raster, cmap='viridis', interpolation='none', vmin=min_value, vmax=max_value)
     plt.axis('off')
     stem = Path(input_tif).stem
 
+    # values = np.arange(min_value, max_value + increment, increment)
     # cbar = plt.colorbar()
     # cbar.set_label(f'Predicted chlorophyll-A in ug/L \n ({date}, scale: {scale})')
     # cbar.set_ticks(values)
@@ -182,9 +162,6 @@ def save_png(input_tif, out_folder, predictions_raster, date, scale, display=Tru
     # png filename
     output_png = stem + ".png"
     output_png_path = os.path.join(out_folder, output_png)
-    #print("Out folder: ", out_folder)
-    #print("PNG name: ", output_png)
-    #print(f"Saving png to {output_png_path}")
     # save the png
     plt.savefig(output_png_path, format='png', bbox_inches='tight', pad_inches=0, transparent=True)
     if display:
@@ -276,6 +253,5 @@ for path_tif in tqdm(paths):
 print(f"Successfully finished {len(paths)} uploads with {len(error_paths)} errors")
 print("Session ID: ", session_uuid)
 
-import json
 with open(os.path.join(session_statues_path, f"error_paths_{session_uuid}.json"), "w") as file:
     file.write(json.dumps(error_paths))
