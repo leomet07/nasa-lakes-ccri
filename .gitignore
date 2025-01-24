@@ -21,3 +21,7 @@ venv/
 
 *.jpg
 
+
+.env
+
+*.status.txt

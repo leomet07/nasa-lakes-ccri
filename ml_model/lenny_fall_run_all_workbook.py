@@ -1,11 +1,30 @@
 # Setup dotenv
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
 
 from pocketbase import PocketBase  # Client also works the same
 from pocketbase.client import FileUpload
-import os
+import cudf
+import pandas as pd
+import numpy as np
+import rasterio
+import matplotlib.pyplot as plt
+import time
+from datetime import datetime
+from pathlib import Path
+import json
+from pyproj import Proj
+import uuid
+from tqdm import tqdm
+import gc
+import joblib
+from cuml.ensemble import RandomForestRegressor
+from dask_ml.model_selection import RandomizedSearchCV
+from cuml.model_selection import train_test_split
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_squared_error
 
 client = PocketBase(os.getenv("PUBLIC_POCKETBASE_URL"))
 admin_data = client.admins.auth_with_password(os.getenv("POCKETBASE_ADMIN_EMAIL"), os.getenv("POCKETBASE_ADMIN_PASSWORD"))
@@ -16,8 +35,6 @@ def add_suffix_to_filename(filename : str, suffix : str):
   return parts[0] + f"_{suffix}." + ".".join(parts[1:])
 
 
-import cudf
-import pandas as pd
 
 def prepare_data(df_path, lagosid_path, lulc_path, random_state=621, test_size=0.1):
     # read csvs
@@ -86,17 +103,6 @@ def prepared_cleaned_data(unclean_data): # Returns CUDF df
 
 
 
-import pandas as pd
-from cuml.ensemble import RandomForestRegressor
-from dask_ml.model_selection import RandomizedSearchCV
-from cuml.model_selection import train_test_split
-from sklearn.metrics import r2_score
-from sklearn.metrics import mean_squared_error
-import numpy as np
-import cudf
-import time
-from pathlib import Path
-import os
 
 # Load the CSV file OR create it
 # Creating the proper dataframe (csv) from other datasets
@@ -142,12 +148,6 @@ def get_constants(df_all, lakeid):
 # In[7]:
 
 
-import joblib
-import rasterio
-import matplotlib.pyplot as plt
-import time
-import numpy as np
-import pandas as pd
 
 
 def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float, pct_dev_constant: float, pct_ag_constant : float) -> str:
@@ -305,8 +305,6 @@ print(f"RMSE: {rmse}")
 
 
 
-import matplotlib.pyplot as plt
-import rasterio
 
 
 def predict(input_tif : str, id: int, display = True):
@@ -411,11 +409,6 @@ def save_png(input_tif, out_folder, predictions_raster, date, scale, display=Tru
 
 
 
-from datetime import datetime
-import json
-import rasterio
-from pyproj import Proj
-import uuid
 session_uuid = str(uuid.uuid4())
 
 
@@ -458,25 +451,23 @@ def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path 
 
 
 
-input_tif_folder = "five_augusts_4k_lakes" # Specify the folder inside of the tar
+input_tif_folder = "input_test" # Specify the folder inside of the tar
 paths = os.listdir(input_tif_folder)
 
 print("Number of files to run: ", len(paths))
 
-
-import rasterio
-from tqdm import tqdm
-
-png_out_folder = "content/out_pngs_5summer_5klakes/"
-
+png_out_folder = os.path.join("png_out", f"png_out_{session_uuid}")
 if not os.path.exists(png_out_folder):
-  os.makedirs(png_out_folder)
+    os.makedirs(png_out_folder)
+
+session_statues_path = "session_statuses/"
+if not os.path.exists(session_statues_path):
+    os.makedirs(session_statues_path)
 
 error_paths = []
 
 print("Current session id: ", session_uuid)
 
-import gc
 
 for path_tif in tqdm(paths):
     path_tif = os.path.join(input_tif_folder, path_tif)
@@ -509,9 +500,9 @@ for path_tif in tqdm(paths):
 
         output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = False)
 
-        upload_spatial_map(id, output_tif, output_path_png, date, corners, scale)
+        # upload_spatial_map(id, output_tif, output_path_png, date, corners, scale)
 
-        with open(f"{session_uuid}_status.txt", "a") as file_obj:
+        with open(os.path.join(session_statues_path, f"successes_{session_uuid}.status.txt"), "a") as file_obj:
             file_obj.write(path_tif +"\n")
 
         gc.collect() # Clear memory after prediction
@@ -523,5 +514,5 @@ print(f"Successfully finished {len(paths)} uploads with {len(error_paths)} error
 print("Session ID: ", session_uuid)
 
 import json
-with open(f"error_paths_{session_uuid}.json", "w") as file:
+with open(os.path.join(session_statues_path, f"error_paths_{session_uuid}.json"), "w") as file:
     file.write(json.dumps(error_paths))
