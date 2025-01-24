@@ -6,8 +6,12 @@ load_dotenv()
 
 insitu_lakes = pd.read_csv(os.getenv("INSITU_CSV_PATH"))
 
-def is_lake_insitu(lagoslakeid: int):
+def is_lake_insitu(lagoslakeid: int | str):
+    lagoslakeid = int(lagoslakeid)
     return (insitu_lakes["lagoslakei"] == lagoslakeid).any()
+
+def is_lake_row_insitu(row):
+    return is_lake_insitu(row["lagoslakeid"])
 
 if __name__ == "__main__":
     print("47841: ", is_lake_insitu(47841))

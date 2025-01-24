@@ -10,6 +10,7 @@ import os
 import json
 import pandas as pd
 from datetime import datetime
+from is_lake_insitu import is_lake_row_insitu
 
 ROOT_DB_FILEPATH = os.getenv("ROOT_DB_FILEPATH") # for accessing files manually
 ACCESS_STORAGE_MODE = "local" # "web" | "local" # Web DB OR Copy of Web DB cloned to local computer
@@ -42,6 +43,9 @@ for index in tqdm(range(len(all_spatial_predictions_list))):
 predictions_df = pd.DataFrame.from_records(all_spatial_predictions_list)
 
 predictions_df = predictions_df[["lagoslakeid", "date", "max", "mean", "std"]] # Restrict predictions_df to reduce file size
+
+predictions_df['insitu'] = predictions_df.apply(is_lake_row_insitu, axis=1)
+
 predictions_df.to_csv("summer_means.csv", date_format=f'%Y%m%d', float_format="%f", index=False) # note %f defaults to 6 digits of precision (won't do crazy scientific notation as str() does)
 
 # Get super means!
