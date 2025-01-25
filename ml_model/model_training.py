@@ -1,3 +1,9 @@
+# Setup dotenv
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 import joblib
 import cudf
 from cuml.ensemble import RandomForestRegressor
@@ -9,6 +15,11 @@ import pandas as pd
 import time
 import numpy as np
 
+# Creating the proper dataframe (csv) from other datasets
+training_df_path = os.getenv("INSITU_CHLA_TRAINING_DATA_PATH") # training data
+lagosid_path = os.getenv("CCRI_LAKES_WITH_LAGOSID_PATH") # needed to get lagoslakeid for training data entries
+lulc_path = os.getenv("LAGOS_LAKE_INFO_PATH") # General lake info (for constants)
+DO_HYPERPARAM_SEARCH = os.getenv("DO_HYPERPARAM_SEARCH").lower() == "true"
 
 def prepare_data(df_path, lagosid_path, lulc_path, random_state=621, test_size=0.1):
     # read csvs
@@ -75,24 +86,9 @@ def prepared_cleaned_data(unclean_data): # Returns CUDF df
     df_cudf = cudf.from_pandas(unclean_data)
     return df_cudf
 
-
-
-
-# Load the CSV file OR create it
-# Creating the proper dataframe (csv) from other datasets
-df_path = "ccri_tidy_chla_processed_data_V2.csv"
-lagosid_path = "ccri_lakes_withLagosID.csv"
-lulc_path = "LAGOSNE_iws_lulc105.csv"
-all_data, lagos_lookup_table = prepare_data(df_path, lagosid_path, lulc_path) # Returns insitu points merged with lagoslookup table AND lagoslookup table for all non-insitu lakes as well
+all_data, lagos_lookup_table = prepare_data(training_df_path, lagosid_path, lulc_path) # Returns insitu points merged with lagoslookup table AND lagoslookup table for all non-insitu lakes as well
 cleaned_data = prepared_cleaned_data(all_data)
 cleaned_data = cleaned_data[cleaned_data['chl_a'] < 350] # most values are 0-100, remove the crazy 4,000 outlier
-
-# Loading the csv of an already existing dataframe
-# file_path = '/content/drive/MyDrive/NASA/lenny_google_collab/postindexaspandas.csv'
-# data = cudf.read_csv(file_path)
-# data = data.drop(columns=['Unnamed: 0'])
-# cleaned_data = data[data['chl_a'] < 350] # most values are 0-100, remove the crazy 4,000 outlier
-
 
 # Convert float columns to integers
 for col in cleaned_data.columns:
@@ -116,81 +112,76 @@ def get_constants(lakeid):
 
     return SA, Max_depth, pct_dev, pct_ag
 
+def hyper_param_search_and_train_model():
+    n_estimators = [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)]
+    # Number of features to consider at every split
+    max_features =  ['log2', 'sqrt', 1.0] # all in the following array are fast but log2 is fastest ['log2', 'sqrt', 1.0]
+    # Maximum number of levels in tree
+    max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
+    # max_depth.append(None)
+    # Minimum number of samples required to split a node
+    min_samples_split = [4,7,10]
+    # Minimum number of samples required at each leaf node
+    min_samples_leaf = [4,7,10]
+
+    # Define the parameter grid for RandomizedSearchCV
+    param_grid = {
+        'n_estimators': n_estimators,
+        'max_depth': max_depth,
+        'min_samples_split': min_samples_split,
+        'min_samples_leaf': min_samples_leaf,
+        'max_features': max_features,
+        'split_criterion': [2] # 2 is MSE (source: https://stackoverflow.com/questions/77984286/cuml-randomforestclassifier-typeerror-an-integer-is-required)
+    }
 
 
-'''
-n_estimators = [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)]
-# Number of features to consider at every split
-max_features =  ['log2', 'sqrt', 1.0] # all in the following array are fast but log2 is fastest ['log2', 'sqrt', 1.0]
-# Maximum number of levels in tree
-max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
-# max_depth.append(None)
-# Minimum number of samples required to split a node
-min_samples_split = [4,7,10]
-# Minimum number of samples required at each leaf node
-min_samples_leaf = [4,7,10]
+    # Initialize the Random Forest model
+    rf_model = RandomForestRegressor() #2 for mse
 
-# Define the parameter grid for RandomizedSearchCV
-param_grid = {
-    'n_estimators': n_estimators,
-    'max_depth': max_depth,
-    'min_samples_split': min_samples_split,
-    'min_samples_leaf': min_samples_leaf,
-    'max_features': max_features,
-    'split_criterion': [2] # 2 is MSE (source: https://stackoverflow.com/questions/77984286/cuml-randomforestclassifier-typeerror-an-integer-is-required)
-}
+    time_start = time.time()
+    print("Searching for best hyperparamaters using a random search and checking by fitting model...")
 
+    # Initialize the RandomizedSearchCV with 5-fold cross-validation
+    random_search = RandomizedSearchCV(
+        estimator=rf_model,
+        param_distributions=param_grid,
+        n_iter=5,
+        scoring='neg_mean_absolute_error', # neg_mean_absolute_error = MAE
+        cv=10, # cv of 10 has the same accuracy but runs slower
+        #verbose=2,
+        # random_state=42,
+        n_jobs=-1
+    )
 
-# Initialize the Random Forest model
-rf_model = RandomForestRegressor() #2 for mse
+    # Fit the RandomizedSearchCV to find the best hyperparameters (by randomly trying combos within param grid and fitting and testing accordingly)
+    random_search.fit(X_train.to_numpy(), y_train.to_numpy())
+    time_end = time.time()
+    time_diff = time_end - time_start
+    print(f"Random search & Fit finished, elapsed {time_diff} seconds")
 
-time_start = time.time()
-print("Random search starting...")
+    # Get the best parameters
+    best_params = random_search.best_params_
+    best_model = random_search.best_estimator_
+    return best_params, best_model
 
+if DO_HYPERPARAM_SEARCH:
+    best_params, best_model = hyper_param_search_and_train_model()
+    time_start = time.time()
+    print("Predicting on test dataset with hyperparam optimized model...")
+    # Predict on the test set using the best model
+    y_pred = best_model.predict(X_test)
+    time_end = time.time()
+    time_diff = time_end - time_start
+    print(f"Predicted! Elapsed {time_diff} seconds")
 
-# Initialize the RandomizedSearchCV with 5-fold cross-validation
-random_search = RandomizedSearchCV(
-    estimator=rf_model,
-    param_distributions=param_grid,
-    n_iter=5,
-    scoring='neg_mean_absolute_error', # neg_mean_absolute_error = MAE
-    cv=10, # cv of 10 has the same accuracy but runs slower
-    #verbose=2,
-    # random_state=42,
-    n_jobs=-1
-)
+    # Calculate the Mean Squared Error and r2
+    r2 = r2_score(y_test.to_numpy(), y_pred.to_numpy())
+    rmse = mean_squared_error(y_test.to_numpy(), y_pred.to_numpy()) ** 0.5
+    print(f"Best Parameters: {best_params}")
+    print(f"r2 score: {r2}")
+    print(f"RMSE: {rmse}")
 
-# Fit the RandomizedSearchCV to find the best hyperparameters
-random_search.fit(X_train.to_numpy(), y_train.to_numpy())
-time_end = time.time()
-time_diff = time_end - time_start
-print(f"Random search finished, elapsed {time_diff} seconds")
-
-# Get the best parameters
-best_params = random_search.best_params_
-best_model = random_search.best_estimator_
-
-time_start = time.time()
-print("Predicting...")
-# Predict on the test set using the best model
-y_pred = best_model.predict(X_test)
-time_end = time.time()
-time_diff = time_end - time_start
-print(f"Predicted! Elapsed {time_diff} seconds")
-
-# Calculate the Mean Squared Error and r2
-r2 = r2_score(y_test.to_numpy(), y_pred.to_numpy())
-rmse = mean_squared_error(y_test.to_numpy(), y_pred.to_numpy()) ** 0.5
-print(f"Best Parameters: {best_params}")
-print(f"r2 score: {r2}")
-print(f"RMSE: {rmse}")
-# print(f"First 10 Predictions: {y_pred[:10]}")
-'''
-
-
-
-good_known_params =  {
-                      'n_estimators': 200, 'min_samples_split': 4, 'min_samples_leaf': 4, 'max_features': 'log2', 'max_depth': 30}
+good_known_params =  {'n_estimators': 200, 'min_samples_split': 4, 'min_samples_leaf': 4, 'max_features': 'log2', 'max_depth': 30}
 
 andrew_params = {
      'max_depth': 30, # Andrew params
@@ -200,22 +191,16 @@ andrew_params = {
     'n_estimators':1200,
 }
 
-# ^ not an interval
-
-# known_fast_model = RandomForestRegressor(**good_known_params)
-andrew_model = RandomForestRegressor(**andrew_params)
-
-time_start = time.time()
 print("Known fit starting...")
-
-# Fit the RandomizedSearchCV to find the best hyperparameters
-andrew_model.fit(X_train.to_numpy(), y_train.to_numpy())
+andrew_model = RandomForestRegressor(**andrew_params) # Instead of searching for params, use preconfigured params andrew found
+time_start = time.time()
+andrew_model.fit(X_train.to_numpy(), y_train.to_numpy())  # Fit model (which uses preconfigured params)
 time_end = time.time()
 time_diff = time_end - time_start
 print(f"Known fit finished, elapsed {time_diff} seconds")
 
 time_start = time.time()
-print("Predicting...")
+print("Predicting on test...")
 # Predict on the test set using the best model
 y_pred = andrew_model.predict(X_test)
 time_end = time.time()
@@ -227,7 +212,3 @@ r2 = r2_score(y_test.to_numpy(), y_pred.to_numpy())
 rmse = mean_squared_error(y_test.to_numpy(), y_pred.to_numpy()) ** 0.5
 print(f"r2 score: {r2}")
 print(f"RMSE: {rmse}")
-
-
-
-
