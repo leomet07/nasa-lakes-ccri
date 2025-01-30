@@ -28,15 +28,15 @@ session_uuid = str(uuid.uuid4())
 print("Current session id: ", session_uuid)
 
 
-input_tif_folder = "input_test" # Specify the folder inside of the tar
+input_tif_folder = "all_lakes_all_images_2025_01_28" # Specify the folder inside of the tar
 paths = os.listdir(input_tif_folder)
 print("Number of files to run: ", len(paths))
 
-png_out_folder = os.path.join("png_out", f"png_out_{session_uuid}")
+png_out_folder = os.path.join("all_png_out", f"png_out_{session_uuid}")
 if not os.path.exists(png_out_folder):
     os.makedirs(png_out_folder)
     
-tif_out_folder = os.path.join("tif_out", f"tif_out_{session_uuid}")
+tif_out_folder = os.path.join("all_tif_out", f"tif_out_{session_uuid}")
 if not os.path.exists(tif_out_folder):
     os.makedirs(tif_out_folder)
 
@@ -191,7 +191,7 @@ def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path 
         "corner1longitude": corners[0][1],
         "corner2latitude": corners[1][0],
         "corner2longitude": corners[1][1],
-        "scale" : 30,
+        "scale" : scale,
         "session_uuid" : session_uuid,
         "lake" : lake_db_id,
         "lagoslakeid" : lakeid
@@ -240,7 +240,7 @@ for path_tif in tqdm(paths):
 
         output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = False)
 
-        # upload_spatial_map(id, output_tif, output_path_png, date, corners, scale)
+        upload_spatial_map(id, output_tif, output_path_png, date, corners, scale)
 
         with open(os.path.join(session_statues_path, f"successes_{session_uuid}.status.txt"), "a") as file_obj:
             file_obj.write(path_tif +"\n")
