@@ -11,6 +11,7 @@ import json
 import pandas as pd
 from datetime import datetime
 from is_lake_insitu import is_lake_row_insitu
+import numpy as np
 
 ROOT_DB_FILEPATH = os.getenv("ROOT_DB_FILEPATH") # for accessing files manually
 ACCESS_STORAGE_MODE = "local" # "web" | "local" # Web DB OR Copy of Web DB cloned to local computer
@@ -58,8 +59,11 @@ for year in range(2019, 2024):
     print(f"Mean for {year}: ", get_august_mean_for_year(predictions_df, year))
 
 
+print("Min STDEV: ", np.min(predictions_df["std"])) # Useful for debugging if there are low stds (caused by errenous or blank images)
+print("Avg STDEV: ", np.mean(predictions_df["std"]))
+
 # Inspect very low STD (aka uniform prediction) lakes
-predictions_df["is_low_std"] = predictions_df.apply(lambda row: row["std"] < 0.000003, axis=1)
+predictions_df["is_low_std"] = predictions_df.apply(lambda row: row["std"] < 0.00005, axis=1)
 predictions_df.to_csv("summer_means_inspect.csv", date_format=f'%Y%m%d', float_format="%f", index=False) # note %f defaults to 6 digits of precision (won't do crazy scientific notation as str() does)
 
 sus_preds = len(predictions_df[predictions_df["is_low_std"] == True])
