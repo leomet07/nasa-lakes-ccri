@@ -55,7 +55,7 @@ def get_august_mean_for_year(df, year: int):
     df_new = df[(df["date"] > f'{year}-07-25') & (df["date"] < f'{year}-09-05')]
     return df_new["mean"].mean(axis=0) # axis = 0 for columnwise mean
 
-for year in range(2019, 2024):
+for year in range(2019, 2025):
     print(f"Mean for {year}: ", get_august_mean_for_year(predictions_df, year))
 
 
