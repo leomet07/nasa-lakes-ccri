@@ -28,7 +28,7 @@ session_uuid = str(uuid.uuid4())
 print("Current session id: ", session_uuid)
 
 
-input_tif_folder = "all_lakes_all_images_2025_01_28" # Specify the folder inside of the tar
+input_tif_folder = "landsat_test" # Specify the folder inside of the tar
 paths = os.listdir(input_tif_folder)
 print("Number of files to run: ", len(paths))
 
@@ -61,6 +61,8 @@ def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float,
         raster_data = src.read()
         profile = src.profile  # Get the profile of the existing raster
 
+        print("# of bands: ", raster_data.shape[0])
+
 
     # create new bands
     SA_band = np.full_like(raster_data[0], SA_constant, dtype=raster_data.dtype)
@@ -80,11 +82,16 @@ def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float,
         for i in range(1, raster_data.shape[0] + 1):
             dst.write(raster_data[i-1], indexes=i)
 
+        bands_to_fill = 9 - 5 # Landsat has 5, not 9 bands
+        for i in range(raster_data.shape[0] + 1, raster_data.shape[0] + 1 + bands_to_fill):
+            null_band = np.full_like(raster_data[0], -99999, dtype=raster_data.dtype)
+            dst.write(null_band, indexes=i)
+
         # write additional bands
-        dst.write(SA_band, indexes=raster_data.shape[0] + 1)
-        dst.write(Max_depth_band, indexes=raster_data.shape[0] + 2)
-        dst.write(pct_dev_band, indexes=raster_data.shape[0] + 3)
-        dst.write(pct_ag_band, indexes=raster_data.shape[0] + 4)
+        dst.write(SA_band, indexes=raster_data.shape[0] + bands_to_fill + 1)
+        dst.write(Max_depth_band, indexes=raster_data.shape[0] + bands_to_fill + 2)
+        dst.write(pct_dev_band, indexes=raster_data.shape[0] + bands_to_fill + 3)
+        dst.write(pct_ag_band, indexes=raster_data.shape[0] + bands_to_fill + 4)
 
 
         dst.transform = src.transform
@@ -238,9 +245,9 @@ for path_tif in tqdm(paths):
 
         output_tif, predictions_loop = predict(path_tif, id, display = False)
 
-        output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = False)
+        output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = True)
 
-        upload_spatial_map(id, output_tif, output_path_png, date, corners, scale)
+        # upload_spatial_map(id, output_tif, output_path_png, date, corners, scale)
 
         with open(os.path.join(session_statues_path, f"successes_{session_uuid}.status.txt"), "a") as file_obj:
             file_obj.write(path_tif +"\n")
