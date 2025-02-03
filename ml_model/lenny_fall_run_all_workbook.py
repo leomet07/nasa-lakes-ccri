@@ -23,6 +23,7 @@ import model_training
 client = PocketBase(os.getenv("PUBLIC_POCKETBASE_URL"))
 admin_data = client.admins.auth_with_password(os.getenv("POCKETBASE_ADMIN_EMAIL"), os.getenv("POCKETBASE_ADMIN_PASSWORD"))
 
+all_lakes = client.collection("lakes").get_full_list(100_000, {"requestKey" : None})
 
 session_uuid = str(uuid.uuid4())
 print("Current session id: ", session_uuid)
@@ -173,12 +174,12 @@ def save_png(input_tif, out_folder, predictions_raster, date, scale, display=Tru
 
 def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path : str, datestr : str, corners : list, scale : int):
     # Step 1: Find Lakeid
-    filter_str = f"lagoslakeid='{lakeid}'"
 
-    matched_lake = client.collection("lakes").get_list(1, 20, {"filter": filter_str}).items[0]
-    lake_db_id = matched_lake.id
+    filtered_list = list(filter(lambda lake: lake.lagoslakeid == lakeid, all_lakes))
+    if len(filtered_list) == 0:
+        raise Exception(f'No lake was found with lagoslakeid of "{lakeid}"')
 
-    # print("Found lake's id in the DB: ", lake_db_id)
+    lake_db_id = filtered_list[0].id
 
     dateiso = datetime.strptime(datestr, '%Y-%m-%d').isoformat()
     # Step 2
@@ -203,10 +204,6 @@ def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path 
         with open(display_image_path, "rb") as displayimage:
             body["display_image"] = FileUpload((f"display_image_{lakeid}_{datestr}.png", displayimage))
             created = client.collection("spatialPredictionMaps").create(body)
-
-    lake_result = client.collection("lakes").update(lake_db_id, {"spatialPredictions+" : created.id}) # here the library does not snakeCase
-
-    # print("Lake result: ",lake_result.__dict__)
 
 
 for path_tif in tqdm(paths):
