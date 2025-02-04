@@ -15,6 +15,8 @@ import pandas as pd
 import time
 import numpy as np
 
+NAN_SUBSTITUTE_CONSANT = -99999
+
 # Creating the proper dataframe (csv) from other datasets
 training_df_path = os.getenv("INSITU_CHLA_TRAINING_DATA_PATH") # training data
 lagosid_path = os.getenv("CCRI_LAKES_WITH_LAGOSID_PATH") # needed to get lagoslakeid for training data entries
@@ -68,7 +70,7 @@ def prepare_data(df_path, lagosid_path, lulc_path, random_state=621, test_size=0
 
 def prepared_cleaned_data(unclean_data): # Returns CUDF df
     unclean_data = unclean_data[['chl_a', '443', '493', '560', '665','703', '740', '780', '834', '864','SA','Max.depth','pct_dev','pct_ag']]
-    unclean_data = unclean_data.fillna(-99999)
+    unclean_data = unclean_data.fillna(NAN_SUBSTITUTE_CONSANT)
     input_cols = ['443', '493', '560', '665','703', '740', '780', '834', '864','SA','Max.depth','pct_dev','pct_ag']
     for col in unclean_data.select_dtypes(["object"]).columns:
         unclean_data[col] = unclean_data[col].astype("category").cat.codes.astype(np.int32)
@@ -105,8 +107,8 @@ print("Dataframes created and data split successfully.")
 def get_constants(lakeid):
     filtered_df = all_data[all_data['lagoslakei'] == lakeid] # maybe this lake is from insitu and we know it's depth and surface area?
     
-    SA = filtered_df['SA'].iloc[0] if not filtered_df.empty else -99999 # -99999  null in our cudf random forest
-    Max_depth = filtered_df['Max.depth'].iloc[0]  if not filtered_df.empty else -99999
+    SA = filtered_df['SA'].iloc[0] if not filtered_df.empty else NAN_SUBSTITUTE_CONSANT # NAN_SUBSTITUTE_CONSANT = null in our cudf random forest
+    Max_depth = filtered_df['Max.depth'].iloc[0]  if not filtered_df.empty else NAN_SUBSTITUTE_CONSANT
     pct_dev = lagos_lookup_table['pct_dev'].iloc[0] # Lagos look up table should have this
     pct_ag = lagos_lookup_table['pct_ag'].iloc[0] # Lagos look up table should have this
 
