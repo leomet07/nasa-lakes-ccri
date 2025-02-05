@@ -36,13 +36,14 @@ for index in tqdm(range(len(all_spatial_predictions_list))):
         raise Exception('ACCESS_STORAGE_MODE must be either "local" or "web"')
     
     spatial_prediction["max"] = results_array[0]
-    spatial_prediction["mean"] = results_array[1]
-    spatial_prediction["std"] = results_array[2]
+    spatial_prediction["min"] = results_array[1]
+    spatial_prediction["mean"] = results_array[2]
+    spatial_prediction["std"] = results_array[3]
     spatial_prediction["date"] = datetime.fromisoformat(spatial_prediction["date"])
 
 predictions_df = pd.DataFrame.from_records(all_spatial_predictions_list)
 
-predictions_df = predictions_df[["lagoslakeid", "date", "max", "mean", "std"]] # Restrict predictions_df to reduce file size
+predictions_df = predictions_df[["lagoslakeid", "date", "max", "min", "mean", "std"]] # Restrict predictions_df to reduce file size
 
 predictions_df['insitu'] = predictions_df.apply(is_lake_row_insitu, axis=1)
 

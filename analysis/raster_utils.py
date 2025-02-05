@@ -16,19 +16,20 @@ def run_analytics_on_opened_raster(src):
 
     raster_array = src.read()
 
-    max_val = raster_array.max()  # This DOES work with 2d arrays
-
     flatten_raster_array = raster_array.flatten()
 
-    mean_val = np.mean(flatten_raster_array)
-    stdev = np.std(flatten_raster_array)
+    max_val = np.nanmax(flatten_raster_array)
+    min_val = np.nanmin(flatten_raster_array)
+
+    mean_val = np.nanmean(flatten_raster_array) # mean EXCLUDING nans
+    stdev = np.nanstd(flatten_raster_array) # std EXCLUDING nans
 
     # top_ten_highest_indices = np.argpartition(flatten_raster_array, -10)[-10:]
     # top_ten = flatten_raster_array[top_ten_highest_indices]
     # top_ten.sort()
     # print("Top ten: ", top_ten)
 
-    return max_val, mean_val, stdev
+    return max_val, min_val, mean_val, stdev
 
 
 def get_max_from_predictions_raster_bytes(raster: bytes) -> float:
