@@ -17,8 +17,13 @@ from pyproj import Proj
 import uuid
 from tqdm import tqdm
 import gc
-import model_training
 
+print("\nCalling model training module...")
+import model_training
+print("Finished calling model training module!\n")
+
+IS_IN_PRODUCTION_MODE = os.getenv("IS_PRODUCTION_MODE").lower() == "true"
+print("IS_IN_PRODUCTION_MODE: ", IS_IN_PRODUCTION_MODE)
 
 client = PocketBase(os.getenv("PUBLIC_POCKETBASE_URL"))
 admin_data = client.admins.auth_with_password(os.getenv("POCKETBASE_ADMIN_EMAIL"), os.getenv("POCKETBASE_ADMIN_PASSWORD"))
@@ -29,7 +34,7 @@ session_uuid = str(uuid.uuid4())
 print("Current session id: ", session_uuid)
 
 
-input_tif_folder = "partially_cloud_tests" # Specify the folder inside of the tar
+input_tif_folder = os.getenv("INPUT_TIF_FOLDER") # Specify the folder inside of the tar
 paths = os.listdir(input_tif_folder)
 print("Number of files to run: ", len(paths))
 
@@ -241,11 +246,12 @@ for path_tif in tqdm(paths):
 
         modified_path_tif = modify_tif(path_tif, SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
-        output_tif, predictions_loop = predict(path_tif, id, display = False)
+        output_tif, predictions_loop = predict(path_tif, id, display = not IS_IN_PRODUCTION_MODE)
 
-        output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = False)
-
-        upload_spatial_map(id, output_tif, output_path_png, date, corners, scale)
+        output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = not IS_IN_PRODUCTION_MODE)
+        
+        if IS_IN_PRODUCTION_MODE:
+            upload_spatial_map(id, output_tif, output_path_png, date, corners, scale)
 
         with open(os.path.join(session_statues_path, f"successes_{session_uuid}.status.txt"), "a") as file_obj:
             file_obj.write(path_tif +"\n")
