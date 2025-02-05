@@ -53,13 +53,13 @@ predictions_df.to_csv("summer_means.csv", date_format=f'%Y%m%d', float_format="%
 # Get super means!
 print("Total rows: ", len(predictions_df))
 def get_august_mean_for_year(df, year: int):
-    df_new = df[(df["date"] > f'{year}-02-25') & (df["date"] < f'{year}-04-05')]
+    df_new = df[(df["date"] > f'{year}-07-25') & (df["date"] < f'{year}-09-05')]
     if len(df_new) == 0:
         print(f"Cannot get august mean for {year} because there are zero predictions for that year.")
     return df_new["mean"].mean(axis=0) # axis = 0 for columnwise mean
 
 for year in range(2019, 2025):
-    print(f"Mean for {year}: ", get_august_mean_for_year(predictions_df, year))
+    print(f"Mean of lake-means for august {year}: ", get_august_mean_for_year(predictions_df, year))
 
 print("Min prediciton_STDEV: ", np.min(predictions_df["std"])) # Useful for debugging if there are low stds (caused by errenous or blank images)
 print("Max prediciton_STDEV: ", np.max(predictions_df["std"])) # Useful for debugging if there are low stds (caused by errenous or blank images)
