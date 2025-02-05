@@ -29,7 +29,7 @@ session_uuid = str(uuid.uuid4())
 print("Current session id: ", session_uuid)
 
 
-input_tif_folder = "all_lakes_all_images_2025_01_28" # Specify the folder inside of the tar
+input_tif_folder = "partially_cloud_tests" # Specify the folder inside of the tar
 paths = os.listdir(input_tif_folder)
 print("Number of files to run: ", len(paths))
 
@@ -109,6 +109,13 @@ def predict(input_tif : str, id: int, display = True):
 
     # handle NaN values by replacing them with the mean of each band
     nan_mask = np.isnan(raster_data_2d)
+    neg_inf_mask = np.isneginf(raster_data[0])
+
+    # num_nans = np.isnan(raster_data_2d).flatten().sum() # sum of 0 for false and 1 for true
+    # print("# of nan values: ", num_nans)
+    # num_neg_infs = np.isneginf(raster_data_2d).flatten().sum()
+    # print("# of -inf values: ", num_neg_infs)
+
     means = np.nanmean(raster_data_2d, axis=0)
     raster_data_2d[nan_mask] = np.take(means, np.where(nan_mask)[1])
 
@@ -117,6 +124,7 @@ def predict(input_tif : str, id: int, display = True):
 
     # reshape the predictions back to the original raster shape
     predictions_raster = predictions.reshape(n_rows, n_cols)
+    predictions_raster[neg_inf_mask] = np.nan # if the input value was originally -inf, ignore its (normal-seeming) output and make it nan
 
     # save the prediction result as a new raster file
     output_tif = add_suffix_to_filename_at_tif_path(input_tif, "predicted")
@@ -142,7 +150,7 @@ def predict(input_tif : str, id: int, display = True):
 
 
 def save_png(input_tif, out_folder, predictions_raster, date, scale, display=True):
-    first_pixel_value = predictions_raster[0, 0]
+    first_pixel_value = predictions_raster[0, 0] # should be nan as input images have "padding" of -inf which we later replace with nan in the output
     masked_raster = np.where(predictions_raster == first_pixel_value, np.nan, predictions_raster)
 
     min_value = 0
