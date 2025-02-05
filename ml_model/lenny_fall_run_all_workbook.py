@@ -248,6 +248,9 @@ for path_tif in tqdm(paths):
 
         output_tif, predictions_loop = predict(path_tif, id, display = not IS_IN_PRODUCTION_MODE)
 
+        if not IS_IN_PRODUCTION_MODE:
+            print("Output tif: ", os.path.join(os.getcwd(),output_tif))
+
         output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = not IS_IN_PRODUCTION_MODE)
         
         if IS_IN_PRODUCTION_MODE:
