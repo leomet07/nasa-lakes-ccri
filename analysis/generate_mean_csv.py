@@ -11,6 +11,7 @@ import json
 import pandas as pd
 from datetime import datetime
 from is_lake_insitu import is_lake_row_insitu
+import numpy as np
 
 ROOT_DB_FILEPATH = os.getenv("ROOT_DB_FILEPATH") # for accessing files manually
 ACCESS_STORAGE_MODE = "local" # "web" | "local" # Web DB OR Copy of Web DB cloned to local computer
@@ -52,12 +53,21 @@ predictions_df.to_csv("summer_means.csv", date_format=f'%Y%m%d', float_format="%
 # Get super means!
 print("Total rows: ", len(predictions_df))
 def get_august_mean_for_year(df, year: int):
-    df_new = df[(df["date"] > f'{year}-07-25') & (df["date"] < f'{year}-09-05')]
+    df_new = df[(df["date"] > f'{year}-02-25') & (df["date"] < f'{year}-04-05')]
+    if len(df_new) == 0:
+        print(f"Cannot get august mean for {year} because there are zero predictions for that year.")
     return df_new["mean"].mean(axis=0) # axis = 0 for columnwise mean
 
 for year in range(2019, 2025):
     print(f"Mean for {year}: ", get_august_mean_for_year(predictions_df, year))
 
+print("Min prediciton_STDEV: ", np.min(predictions_df["std"])) # Useful for debugging if there are low stds (caused by errenous or blank images)
+print("Max prediciton_STDEV: ", np.max(predictions_df["std"])) # Useful for debugging if there are low stds (caused by errenous or blank images)
+print("Avg prediciton_STDEV: ", np.mean(predictions_df["std"]))
+
+print("Min prediciton_min: ", np.min(predictions_df["min"]))
+print("Max prediciton_min: ", np.min(predictions_df["min"]))
+print("Avg prediciton_min: ", np.mean(predictions_df["min"]))
 
 # Inspect very low STD (aka uniform prediction) lakes
 predictions_df["is_low_std"] = predictions_df.apply(lambda row: row["std"] < 0.000003, axis=1)
