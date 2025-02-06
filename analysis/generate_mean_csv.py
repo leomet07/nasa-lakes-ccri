@@ -66,7 +66,7 @@ print("Max prediciton_STDEV: ", np.max(predictions_df["std"])) # Useful for debu
 print("Avg prediciton_STDEV: ", np.mean(predictions_df["std"]))
 
 print("Min prediciton_min: ", np.min(predictions_df["min"]))
-print("Max prediciton_min: ", np.min(predictions_df["min"]))
+print("Max prediciton_min: ", np.max(predictions_df["max"]))
 print("Avg prediciton_min: ", np.mean(predictions_df["min"]))
 
 # Inspect very low STD (aka uniform prediction) lakes
