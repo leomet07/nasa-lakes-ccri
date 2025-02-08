@@ -17,18 +17,24 @@ from pyproj import Proj
 import uuid
 from tqdm import tqdm
 import gc
-import model_training
 
+print("\nCalling model training module...")
+import model_training
+print("Finished calling model training module!\n")
+
+IS_IN_PRODUCTION_MODE = os.getenv("IS_PRODUCTION_MODE").lower() == "true"
+print("IS_IN_PRODUCTION_MODE: ", IS_IN_PRODUCTION_MODE)
 
 client = PocketBase(os.getenv("PUBLIC_POCKETBASE_URL"))
 admin_data = client.admins.auth_with_password(os.getenv("POCKETBASE_ADMIN_EMAIL"), os.getenv("POCKETBASE_ADMIN_PASSWORD"))
 
+all_lakes = client.collection("lakes").get_full_list(100_000, {"requestKey" : None})
 
 session_uuid = str(uuid.uuid4())
 print("Current session id: ", session_uuid)
 
 
-input_tif_folder = "landsat_test" # Specify the folder inside of the tar
+input_tif_folder = os.getenv("INPUT_TIF_FOLDER") # Specify the folder inside of the tar
 paths = os.listdir(input_tif_folder)
 print("Number of files to run: ", len(paths))
 
@@ -114,15 +120,26 @@ def predict(input_tif : str, id: int, display = True):
     raster_data_2d = raster_data.reshape(n_bands, -1).T
 
     # handle NaN values by replacing them with the mean of each band
-    nan_mask = np.isnan(raster_data_2d)
-    means = np.nanmean(raster_data_2d, axis=0)
-    raster_data_2d[nan_mask] = np.take(means, np.where(nan_mask)[1])
+    nan_mask_2d = np.isnan(raster_data_2d)
+    nan_mask = np.isnan(raster_data[0])
+    neg_inf_mask = np.isneginf(raster_data[0])
 
+    # num_nans = np.isnan(raster_data_2d).flatten().sum() # sum of 0 for false and 1 for true
+    # print("# of nan values: ", num_nans)
+    # num_neg_infs = np.isneginf(raster_data_2d).flatten().sum()
+    # print("# of -inf values: ", num_neg_infs)
+
+    means = np.nanmean(raster_data_2d, axis=0)
+    raster_data_2d[nan_mask_2d] = np.take(means, np.where(nan_mask_2d)[1]) # to avoid errors when predicting
+    
+    print("Predicting ...")
     # perform the prediction
     predictions = model_training.andrew_model.predict(raster_data_2d)
 
     # reshape the predictions back to the original raster shape
     predictions_raster = predictions.reshape(n_rows, n_cols)
+    predictions_raster[neg_inf_mask] = np.nan # if the input value was originally -inf, ignore its (normal-seeming) output and make it nan
+    predictions_raster[nan_mask] = np.nan # if the input value was originally nan, ignore its (normal-seeming) output and make it nan
 
     # save the prediction result as a new raster file
     output_tif = add_suffix_to_filename_at_tif_path(input_tif, "predicted")
@@ -148,7 +165,7 @@ def predict(input_tif : str, id: int, display = True):
 
 
 def save_png(input_tif, out_folder, predictions_raster, date, scale, display=True):
-    first_pixel_value = predictions_raster[0, 0]
+    first_pixel_value = predictions_raster[0, 0] # should be nan as input images have "padding" of -inf which we later replace with nan in the output
     masked_raster = np.where(predictions_raster == first_pixel_value, np.nan, predictions_raster)
 
     min_value = 0
@@ -180,12 +197,12 @@ def save_png(input_tif, out_folder, predictions_raster, date, scale, display=Tru
 
 def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path : str, datestr : str, corners : list, scale : int):
     # Step 1: Find Lakeid
-    filter_str = f"lagoslakeid='{lakeid}'"
 
-    matched_lake = client.collection("lakes").get_list(1, 20, {"filter": filter_str}).items[0]
-    lake_db_id = matched_lake.id
+    filtered_list = list(filter(lambda lake: lake.lagoslakeid == lakeid, all_lakes))
+    if len(filtered_list) == 0:
+        raise Exception(f'No lake was found with lagoslakeid of "{lakeid}"')
 
-    # print("Found lake's id in the DB: ", lake_db_id)
+    lake_db_id = filtered_list[0].id
 
     dateiso = datetime.strptime(datestr, '%Y-%m-%d').isoformat()
     # Step 2
@@ -211,19 +228,18 @@ def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path 
             body["display_image"] = FileUpload((f"display_image_{lakeid}_{datestr}.png", displayimage))
             created = client.collection("spatialPredictionMaps").create(body)
 
-    lake_result = client.collection("lakes").update(lake_db_id, {"spatialPredictions+" : created.id}) # here the library does not snakeCase
-
-    # print("Lake result: ",lake_result.__dict__)
-
 
 for path_tif in tqdm(paths):
     path_tif = os.path.join(input_tif_folder, path_tif)
     try:
         with rasterio.open(path_tif) as raster:
             tags = raster.tags()
-            id = int(tags["id"])
-            date = tags["date"] # date does NOT do anything here, just for title
-            scale = tags["scale"] # scale does NOT do anything here, just for title
+            # id = int(tags["id"])
+            # date = tags["date"] # date does NOT do anything here, just for title
+            # scale = tags["scale"] # scale does NOT do anything here, just for title
+            id = 81353
+            date = "2023-07-05"
+            scale = 10
 
             top_left = raster.transform * (0, 0)
             bottom_right = raster.transform * (raster.width, raster.height)
@@ -240,14 +256,19 @@ for path_tif in tqdm(paths):
         SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant = model_training.get_constants(id)
         # print("Constants based on id: ", SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
-
+        print("Modifyng tif...")
         modified_path_tif = modify_tif(path_tif, SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
-        output_tif, predictions_loop = predict(path_tif, id, display = False)
+        print("Entering prediction function")
+        output_tif, predictions_loop = predict(path_tif, id, display = not IS_IN_PRODUCTION_MODE)
 
-        output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = True)
+        if not IS_IN_PRODUCTION_MODE:
+            print("Output tif: ", os.path.join(os.getcwd(),output_tif))
 
-        # upload_spatial_map(id, output_tif, output_path_png, date, corners, scale)
+        output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = not IS_IN_PRODUCTION_MODE)
+        
+        if IS_IN_PRODUCTION_MODE:
+            upload_spatial_map(id, output_tif, output_path_png, date, corners, scale)
 
         with open(os.path.join(session_statues_path, f"successes_{session_uuid}.status.txt"), "a") as file_obj:
             file_obj.write(path_tif +"\n")

@@ -4,6 +4,7 @@ import os
 
 load_dotenv()
 
+from scipy import stats
 import joblib
 import cudf
 from cuml.ensemble import RandomForestRegressor
@@ -14,12 +15,16 @@ from sklearn.metrics import mean_squared_error
 import pandas as pd
 import time
 import numpy as np
+from matplotlib import pyplot as plt
+
+NAN_SUBSTITUTE_CONSANT = -99999
 
 # Creating the proper dataframe (csv) from other datasets
 training_df_path = os.getenv("INSITU_CHLA_TRAINING_DATA_PATH") # training data
 lagosid_path = os.getenv("CCRI_LAKES_WITH_LAGOSID_PATH") # needed to get lagoslakeid for training data entries
 lulc_path = os.getenv("LAGOS_LAKE_INFO_PATH") # General lake info (for constants)
 DO_HYPERPARAM_SEARCH = os.getenv("DO_HYPERPARAM_SEARCH").lower() == "true"
+GRAPH_AND_COMPARE_PERFORMANCE = os.getenv("GRAPH_AND_COMPARE_PERFORMANCE").lower() == "true"
 
 def prepare_data(df_path, lagosid_path, lulc_path, random_state=621, test_size=0.1):
     # read csvs
@@ -68,7 +73,7 @@ def prepare_data(df_path, lagosid_path, lulc_path, random_state=621, test_size=0
 
 def prepared_cleaned_data(unclean_data): # Returns CUDF df
     unclean_data = unclean_data[['chl_a', '443', '493', '560', '665','703', '740', '780', '834', '864','SA','Max.depth','pct_dev','pct_ag']]
-    unclean_data = unclean_data.fillna(-99999)
+    unclean_data = unclean_data.fillna(NAN_SUBSTITUTE_CONSANT)
     input_cols = ['443', '493', '560', '665','703', '740', '780', '834', '864','SA','Max.depth','pct_dev','pct_ag']
     for col in unclean_data.select_dtypes(["object"]).columns:
         unclean_data[col] = unclean_data[col].astype("category").cat.codes.astype(np.int32)
@@ -105,8 +110,8 @@ print("Dataframes created and data split successfully.")
 def get_constants(lakeid):
     filtered_df = all_data[all_data['lagoslakei'] == lakeid] # maybe this lake is from insitu and we know it's depth and surface area?
     
-    SA = filtered_df['SA'].iloc[0] if not filtered_df.empty else -99999 # -99999  null in our cudf random forest
-    Max_depth = filtered_df['Max.depth'].iloc[0]  if not filtered_df.empty else -99999
+    SA = filtered_df['SA'].iloc[0] if not filtered_df.empty else NAN_SUBSTITUTE_CONSANT # NAN_SUBSTITUTE_CONSANT = null in our cudf random forest
+    Max_depth = filtered_df['Max.depth'].iloc[0]  if not filtered_df.empty else NAN_SUBSTITUTE_CONSANT
     pct_dev = lagos_lookup_table['pct_dev'].iloc[0] # Lagos look up table should have this
     pct_ag = lagos_lookup_table['pct_ag'].iloc[0] # Lagos look up table should have this
 
@@ -212,3 +217,29 @@ r2 = r2_score(y_test.to_numpy(), y_pred.to_numpy())
 rmse = mean_squared_error(y_test.to_numpy(), y_pred.to_numpy()) ** 0.5
 print(f"r2 score: {r2}")
 print(f"RMSE: {rmse}")
+
+
+if GRAPH_AND_COMPARE_PERFORMANCE:
+    print("mean of test: ", np.mean(y_test))
+    print("mean of pred: ", np.mean(y_pred))
+
+    plt.figure(1) # Figure 1
+    plt.hist(y_pred, 100)
+    plt.xlim(0, 75)
+    plt.xlabel("Predicted chl-a (ug/l)")
+    plt.ylabel("Frequency")
+    plt.title("Prediction Histogram (GPU)")
+
+    # Plot y_pred performance: https://stackoverflow.com/questions/19064772/visualization-of-scatter-plots-with-overlapping-points-in-matplotlib
+    values = np.vstack([y_test.to_numpy(), y_pred.to_numpy()])
+    kernel = stats.gaussian_kde(values, bw_method=.02)(values)
+    plt.figure(2) # Figure 1
+    plt.scatter(y_test.to_numpy(), y_pred.to_numpy(), s=20, c=kernel,cmap='viridis')
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel('Observed Chl-a (ug/l)')
+    plt.ylabel('Predicted Chl-a (ug/l)')
+    plt.title('GPU Random Forest Regression')
+
+    # Show both figures at once
+    plt.show()
