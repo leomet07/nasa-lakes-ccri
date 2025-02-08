@@ -16,11 +16,13 @@ import pandas as pd
 import time
 import numpy as np
 from matplotlib import pyplot as plt
-import model_data
 
 DO_HYPERPARAM_SEARCH = os.getenv("DO_HYPERPARAM_SEARCH").lower() == "true"
 GRAPH_AND_COMPARE_PERFORMANCE = os.getenv("GRAPH_AND_COMPARE_PERFORMANCE").lower() == "true"
+USE_CACHED_MODEL = os.getenv("USE_CACHED_MODEL").lower() == "true"
+GPU_MODEL_SAVE_FILE = "model_gpu.joblib"
 
+import model_data
 cleaned_data = cudf.from_pandas(model_data.cleaned_data)
 
 # Convert float columns to integers
@@ -103,23 +105,36 @@ if DO_HYPERPARAM_SEARCH:
     print(f"r2 score: {r2}")
     print(f"RMSE: {rmse}")
 
-good_known_params =  {'n_estimators': 200, 'min_samples_split': 4, 'min_samples_leaf': 4, 'max_features': 'log2', 'max_depth': 30}
+def train_gpu_model():
+    good_known_params =  {'n_estimators': 200, 'min_samples_split': 4, 'min_samples_leaf': 4, 'max_features': 'log2', 'max_depth': 30}
 
-andrew_params = {
-     'max_depth': 30, # Andrew params
-    'max_features': 'sqrt',
-    'min_samples_leaf' :1,
-    'min_samples_split' :2,
-    'n_estimators':1200,
-}
+    andrew_params = {
+        'max_depth': 30, # Andrew params
+        'max_features': 'sqrt',
+        'min_samples_leaf' :1,
+        'min_samples_split' :2,
+        'n_estimators':1200,
+    }
 
-print("Known fit starting...")
-andrew_model = RandomForestRegressor(**andrew_params) # Instead of searching for params, use preconfigured params andrew found
-time_start = time.time()
-andrew_model.fit(X_train.to_numpy(), y_train.to_numpy())  # Fit model (which uses preconfigured params)
-time_end = time.time()
-time_diff = time_end - time_start
-print(f"Known fit finished, elapsed {time_diff} seconds")
+    print("Known fit starting...")
+    model = RandomForestRegressor(**andrew_params) # Instead of searching for params, use preconfigured params andrew found
+    time_start = time.time()
+    model.fit(X_train.to_numpy(), y_train.to_numpy())  # Fit model (which uses preconfigured params)
+    time_end = time.time()
+    time_diff = time_end - time_start
+    print(f"Known fit finished, elapsed {time_diff} seconds")
+
+    joblib.dump(model, GPU_MODEL_SAVE_FILE)
+    return model
+
+if USE_CACHED_MODEL and os.path.exists(GPU_MODEL_SAVE_FILE):
+    print("Loading (GPU) model from cache...")
+    andrew_model = joblib.load(GPU_MODEL_SAVE_FILE)
+    print("Loaded!")
+else:
+    print("Training (GPU) model from scratch...")
+    andrew_model = train_gpu_model()
+    print("Trained!")
 
 time_start = time.time()
 print("Predicting on test...")
