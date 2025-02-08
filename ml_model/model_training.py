@@ -87,42 +87,27 @@ def hyper_param_search_and_train_model():
     best_params = random_search.best_params_
     best_model = random_search.best_estimator_
     return best_params, best_model
-
-if DO_HYPERPARAM_SEARCH:
-    best_params, best_model = hyper_param_search_and_train_model()
-    time_start = time.time()
-    print("Predicting on test dataset with hyperparam optimized model...")
-    # Predict on the test set using the best model
-    y_pred = best_model.predict(X_test)
-    time_end = time.time()
-    time_diff = time_end - time_start
-    print(f"Predicted! Elapsed {time_diff} seconds")
-
-    # Calculate the Mean Squared Error and r2
-    r2 = r2_score(y_test.to_numpy(), y_pred.to_numpy())
-    rmse = mean_squared_error(y_test.to_numpy(), y_pred.to_numpy()) ** 0.5
-    print(f"Best Parameters: {best_params}")
-    print(f"r2 score: {r2}")
-    print(f"RMSE: {rmse}")
-
+   
 def train_gpu_model():
-    good_known_params =  {'n_estimators': 200, 'min_samples_split': 4, 'min_samples_leaf': 4, 'max_features': 'log2', 'max_depth': 30}
+    if DO_HYPERPARAM_SEARCH:
+        best_params, model = hyper_param_search_and_train_model()
+        print(f"Best Parameters: {best_params}")
+    else:
+        preset_params = {
+            'max_depth': 30, # Andrew params
+            'max_features': 'sqrt',
+            'min_samples_leaf' :1,
+            'min_samples_split' :2,
+            'n_estimators':1200,
+        }
 
-    andrew_params = {
-        'max_depth': 30, # Andrew params
-        'max_features': 'sqrt',
-        'min_samples_leaf' :1,
-        'min_samples_split' :2,
-        'n_estimators':1200,
-    }
-
-    print("Known fit starting...")
-    model = RandomForestRegressor(**andrew_params) # Instead of searching for params, use preconfigured params andrew found
-    time_start = time.time()
-    model.fit(X_train.to_numpy(), y_train.to_numpy())  # Fit model (which uses preconfigured params)
-    time_end = time.time()
-    time_diff = time_end - time_start
-    print(f"Known fit finished, elapsed {time_diff} seconds")
+        print("Known fit starting...")
+        model = RandomForestRegressor(**preset_params) # Instead of searching for params, use preconfigured params andrew found
+        time_start = time.time()
+        model.fit(X_train.to_numpy(), y_train.to_numpy())  # Fit model (which uses preconfigured params)
+        time_end = time.time()
+        time_diff = time_end - time_start
+        print(f"Known fit finished, elapsed {time_diff} seconds")
 
     joblib.dump(model, GPU_MODEL_SAVE_FILE)
     return model
