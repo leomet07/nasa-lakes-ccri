@@ -4,6 +4,7 @@ import os
 
 load_dotenv()
 
+from scipy import stats
 import joblib
 import cudf
 from cuml.ensemble import RandomForestRegressor
@@ -222,27 +223,23 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     print("mean of test: ", np.mean(y_test))
     print("mean of pred: ", np.mean(y_pred))
 
-
+    plt.figure(1) # Figure 1
     plt.hist(y_pred, 100)
     plt.xlim(0, 75)
     plt.xlabel("Predicted chl-a (ug/l)")
     plt.ylabel("Frequency")
     plt.title("Prediction Histogram (GPU)")
-    plt.show()
 
-    # PLOT BEST RF PERFORMANCE
-    #https://stackoverflow.com/questions/19064772/visualization-of-scatter-plots-with-overlapping-points-in-matplotlib
-    from scipy import stats
-
+    # Plot y_pred performance: https://stackoverflow.com/questions/19064772/visualization-of-scatter-plots-with-overlapping-points-in-matplotlib
     values = np.vstack([y_test.to_numpy(), y_pred.to_numpy()])
     kernel = stats.gaussian_kde(values, bw_method=.02)(values)
-
+    plt.figure(2) # Figure 1
     plt.scatter(y_test.to_numpy(), y_pred.to_numpy(), s=20, c=kernel,cmap='viridis')
-    # plt.axline((0,0), (50,50), linewidth=1, color='black')
-    # plt.axis((0,50,0,50))
     plt.xscale('log')
     plt.yscale('log')
     plt.xlabel('Observed Chl-a (ug/l)')
     plt.ylabel('Predicted Chl-a (ug/l)')
     plt.title('GPU Random Forest Regression')
+
+    # Show both figures at once
     plt.show()
