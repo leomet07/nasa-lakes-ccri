@@ -17,9 +17,19 @@ from pyproj import Proj
 import uuid
 from tqdm import tqdm
 import gc
+import model_data
+
+IS_CPU_MODE = os.getenv("IS_CPU_MODE").lower() == "true"
 
 print("\nCalling model training module...")
-import model_training
+if IS_CPU_MODE:
+    print("CPU mode.")
+    import cpu_model_training
+    andrew_model = cpu_model_training.andrew_model
+else:
+    print("GPU mode.")
+    import model_training
+    andrew_model = model_training.andrew_model
 print("Finished calling model training module!\n")
 
 IS_IN_PRODUCTION_MODE = os.getenv("IS_PRODUCTION_MODE").lower() == "true"
@@ -112,22 +122,22 @@ def predict(input_tif : str, id: int, display = True):
     n_bands, n_rows, n_cols = raster_data.shape
     raster_data_2d = raster_data.reshape(n_bands, -1).T
 
-    # handle NaN values by replacing them with the mean of each band
-    nan_mask_2d = np.isnan(raster_data_2d)
-    nan_mask = np.isnan(raster_data[0])
-    neg_inf_mask = np.isneginf(raster_data[0])
+    nan_mask = np.isnan(raster_data[0]) # if first band at that pixel is nan, usually rest are too (helps remove "garbage" val from output later)
+    neg_inf_mask = np.isneginf(raster_data[0])  # if first band at that pixel is -inf, usually rest are too (helps remove "garbage" val from output later)
+    
+    raster_data_2d[np.isnan(raster_data_2d)] = model_data.NAN_SUBSTITUTE_CONSANT # Replace with NAN_SUB_CONSTANT or mean of general, but this pixels output  will later be removed anyway
+    raster_data_2d[np.isneginf(raster_data_2d)] = model_data.NAN_SUBSTITUTE_CONSANT # Replace with NAN_SUB_CONSTANT or of general, but this pixels output will later be removed anyway
 
     # num_nans = np.isnan(raster_data_2d).flatten().sum() # sum of 0 for false and 1 for true
     # print("# of nan values: ", num_nans)
     # num_neg_infs = np.isneginf(raster_data_2d).flatten().sum()
     # print("# of -inf values: ", num_neg_infs)
-
-    means = np.nanmean(raster_data_2d, axis=0)
-    raster_data_2d[nan_mask_2d] = np.take(means, np.where(nan_mask_2d)[1]) # to avoid errors when predicting
+    # num_pos_infs = np.isposinf(raster_data_2d).flatten().sum()
+    # print("# of +inf values: ", num_pos_infs)
     
     print("Predicting ...")
     # perform the prediction
-    predictions = model_training.andrew_model.predict(raster_data_2d)
+    predictions = andrew_model.predict(raster_data_2d)
 
     # reshape the predictions back to the original raster shape
     predictions_raster = predictions.reshape(n_rows, n_cols)
@@ -227,12 +237,9 @@ for path_tif in tqdm(paths):
     try:
         with rasterio.open(path_tif) as raster:
             tags = raster.tags()
-            # id = int(tags["id"])
-            # date = tags["date"] # date does NOT do anything here, just for title
-            # scale = tags["scale"] # scale does NOT do anything here, just for title
-            id = 81353
-            date = "2023-07-05"
-            scale = 10
+            id = int(tags["id"])
+            date = tags["date"] # date does NOT do anything here, just for title
+            scale = tags["scale"] # scale does NOT do anything here, just for title
 
             top_left = raster.transform * (0, 0)
             bottom_right = raster.transform * (raster.width, raster.height)
@@ -246,7 +253,7 @@ for path_tif in tqdm(paths):
         # print("id: ", id, " date: ", date, " scale: ", scale, " corners: ", corners)
 
         # Get constants
-        SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant = model_training.get_constants(id)
+        SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant = model_data.get_constants(id)
         # print("Constants based on id: ", SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
         print("Modifyng tif...")

@@ -18,9 +18,7 @@ lulc_path = os.getenv("LAGOS_LAKE_INFO_PATH") # General lake info (for constants
 def prepare_data(df_path, lagosid_path, lulc_path):
     # read csvs
     df = pd.read_csv(df_path)
-
     lagosid = pd.read_csv(lagosid_path)
-    print("CSV imported")
 
     # select relevant columns from lagosid
     lagosid = lagosid[['lagoslakei']]
