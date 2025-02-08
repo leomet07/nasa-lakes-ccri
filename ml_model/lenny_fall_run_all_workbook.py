@@ -113,7 +113,8 @@ def predict(input_tif : str, id: int, display = True):
     raster_data_2d = raster_data.reshape(n_bands, -1).T
 
     # handle NaN values by replacing them with the mean of each band
-    nan_mask = np.isnan(raster_data_2d)
+    nan_mask_2d = np.isnan(raster_data_2d)
+    nan_mask = np.isnan(raster_data[0])
     neg_inf_mask = np.isneginf(raster_data[0])
 
     # num_nans = np.isnan(raster_data_2d).flatten().sum() # sum of 0 for false and 1 for true
@@ -122,14 +123,16 @@ def predict(input_tif : str, id: int, display = True):
     # print("# of -inf values: ", num_neg_infs)
 
     means = np.nanmean(raster_data_2d, axis=0)
-    raster_data_2d[nan_mask] = np.take(means, np.where(nan_mask)[1])
-
+    raster_data_2d[nan_mask_2d] = np.take(means, np.where(nan_mask_2d)[1]) # to avoid errors when predicting
+    
+    print("Predicting ...")
     # perform the prediction
     predictions = model_training.andrew_model.predict(raster_data_2d)
 
     # reshape the predictions back to the original raster shape
     predictions_raster = predictions.reshape(n_rows, n_cols)
     predictions_raster[neg_inf_mask] = np.nan # if the input value was originally -inf, ignore its (normal-seeming) output and make it nan
+    predictions_raster[nan_mask] = np.nan # if the input value was originally nan, ignore its (normal-seeming) output and make it nan
 
     # save the prediction result as a new raster file
     output_tif = add_suffix_to_filename_at_tif_path(input_tif, "predicted")
@@ -224,9 +227,12 @@ for path_tif in tqdm(paths):
     try:
         with rasterio.open(path_tif) as raster:
             tags = raster.tags()
-            id = int(tags["id"])
-            date = tags["date"] # date does NOT do anything here, just for title
-            scale = tags["scale"] # scale does NOT do anything here, just for title
+            # id = int(tags["id"])
+            # date = tags["date"] # date does NOT do anything here, just for title
+            # scale = tags["scale"] # scale does NOT do anything here, just for title
+            id = 81353
+            date = "2023-07-05"
+            scale = 10
 
             top_left = raster.transform * (0, 0)
             bottom_right = raster.transform * (raster.width, raster.height)
@@ -243,9 +249,10 @@ for path_tif in tqdm(paths):
         SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant = model_training.get_constants(id)
         # print("Constants based on id: ", SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
-
+        print("Modifyng tif...")
         modified_path_tif = modify_tif(path_tif, SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
+        print("Entering prediction function")
         output_tif, predictions_loop = predict(path_tif, id, display = not IS_IN_PRODUCTION_MODE)
 
         if not IS_IN_PRODUCTION_MODE:
