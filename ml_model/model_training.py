@@ -14,6 +14,7 @@ from sklearn.metrics import mean_squared_error
 import pandas as pd
 import time
 import numpy as np
+from matplotlib import pyplot as plt
 
 NAN_SUBSTITUTE_CONSANT = -99999
 
@@ -22,6 +23,7 @@ training_df_path = os.getenv("INSITU_CHLA_TRAINING_DATA_PATH") # training data
 lagosid_path = os.getenv("CCRI_LAKES_WITH_LAGOSID_PATH") # needed to get lagoslakeid for training data entries
 lulc_path = os.getenv("LAGOS_LAKE_INFO_PATH") # General lake info (for constants)
 DO_HYPERPARAM_SEARCH = os.getenv("DO_HYPERPARAM_SEARCH").lower() == "true"
+GRAPH_AND_COMPARE_PERFORMANCE = os.getenv("GRAPH_AND_COMPARE_PERFORMANCE").lower() == "true"
 
 def prepare_data(df_path, lagosid_path, lulc_path, random_state=621, test_size=0.1):
     # read csvs
@@ -214,3 +216,33 @@ r2 = r2_score(y_test.to_numpy(), y_pred.to_numpy())
 rmse = mean_squared_error(y_test.to_numpy(), y_pred.to_numpy()) ** 0.5
 print(f"r2 score: {r2}")
 print(f"RMSE: {rmse}")
+
+
+if GRAPH_AND_COMPARE_PERFORMANCE:
+    print("mean of test: ", np.mean(y_test))
+    print("mean of pred: ", np.mean(y_pred))
+
+
+    plt.hist(y_pred, 100)
+    plt.xlim(0, 75)
+    plt.xlabel("Predicted chl-a (ug/l)")
+    plt.ylabel("Frequency")
+    plt.title("Prediction Histogram (GPU)")
+    plt.show()
+
+    # PLOT BEST RF PERFORMANCE
+    #https://stackoverflow.com/questions/19064772/visualization-of-scatter-plots-with-overlapping-points-in-matplotlib
+    from scipy import stats
+
+    values = np.vstack([y_test.to_numpy(), y_pred.to_numpy()])
+    kernel = stats.gaussian_kde(values, bw_method=.02)(values)
+
+    plt.scatter(y_test.to_numpy(), y_pred.to_numpy(), s=20, c=kernel,cmap='viridis')
+    # plt.axline((0,0), (50,50), linewidth=1, color='black')
+    # plt.axis((0,50,0,50))
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel('Observed Chl-a (ug/l)')
+    plt.ylabel('Predicted Chl-a (ug/l)')
+    plt.title('GPU Random Forest Regression')
+    plt.show()
