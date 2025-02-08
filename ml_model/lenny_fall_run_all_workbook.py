@@ -20,20 +20,20 @@ import gc
 import model_data
 
 IS_CPU_MODE = os.getenv("IS_CPU_MODE").lower() == "true"
+IS_IN_PRODUCTION_MODE = os.getenv("IS_PRODUCTION_MODE").lower() == "true"
+VISUALIZE_PREDICTIONS = os.getenv("VISUALIZE_PREDICTIONS").lower() == "true"
+print("IS_CPU_MODE: ", IS_CPU_MODE)
+print("IS_IN_PRODUCTION_MODE: ", IS_IN_PRODUCTION_MODE)
 
 print("\nCalling model training module...")
 if IS_CPU_MODE:
-    print("CPU mode.")
     import cpu_model_training
     andrew_model = cpu_model_training.andrew_model
 else:
-    print("GPU mode.")
     import model_training
     andrew_model = model_training.andrew_model
-print("Finished calling model training module!\n")
 
-IS_IN_PRODUCTION_MODE = os.getenv("IS_PRODUCTION_MODE").lower() == "true"
-print("IS_IN_PRODUCTION_MODE: ", IS_IN_PRODUCTION_MODE)
+print("Finished calling model training module!\n")
 
 client = PocketBase(os.getenv("PUBLIC_POCKETBASE_URL"))
 admin_data = client.admins.auth_with_password(os.getenv("POCKETBASE_ADMIN_EMAIL"), os.getenv("POCKETBASE_ADMIN_PASSWORD"))
@@ -135,7 +135,6 @@ def predict(input_tif : str, id: int, display = True):
     # num_pos_infs = np.isposinf(raster_data_2d).flatten().sum()
     # print("# of +inf values: ", num_pos_infs)
     
-    print("Predicting ...")
     # perform the prediction
     predictions = andrew_model.predict(raster_data_2d)
 
@@ -256,16 +255,14 @@ for path_tif in tqdm(paths):
         SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant = model_data.get_constants(id)
         # print("Constants based on id: ", SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
-        print("Modifyng tif...")
         modified_path_tif = modify_tif(path_tif, SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
-        print("Entering prediction function")
-        output_tif, predictions_loop = predict(path_tif, id, display = not IS_IN_PRODUCTION_MODE)
+        output_tif, predictions_loop = predict(path_tif, id, display = VISUALIZE_PREDICTIONS)
 
-        if not IS_IN_PRODUCTION_MODE:
+        if VISUALIZE_PREDICTIONS:
             print("Output tif: ", os.path.join(os.getcwd(),output_tif))
 
-        output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = not IS_IN_PRODUCTION_MODE)
+        output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = VISUALIZE_PREDICTIONS)
         
         if IS_IN_PRODUCTION_MODE:
             upload_spatial_map(id, output_tif, output_path_png, date, corners, scale)

@@ -62,7 +62,7 @@ else:
 time_start = time.time()
 print("Predicting on test...")
 # Predict on the test set using the best model
-y_pred = andrew_model.predict(X_test)
+y_pred = andrew_model.predict(X_test.values)
 time_end = time.time()
 time_diff = time_end - time_start
 print(f"Predicted! Elapsed {time_diff} seconds")
