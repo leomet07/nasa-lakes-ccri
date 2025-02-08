@@ -42,7 +42,7 @@ def train_cpu_model():
     print("Known fit starting...")
     model = RandomForestRegressor(**andrew_params) # Instead of searching for params, use preconfigured params andrew found
     time_start = time.time()
-    model.fit(X_train, y_train)  # Fit model (which uses preconfigured params)
+    model.fit(X_train.values, y_train)  # Fit model (which uses preconfigured params)
     time_end = time.time()
     time_diff = time_end - time_start
     print(f"Known fit finished, elapsed {time_diff} seconds")
