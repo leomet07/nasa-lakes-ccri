@@ -14,7 +14,7 @@ cleaned_data = pd.read_csv("postindexaspandas_good.csv")
 X = cleaned_data.drop(columns=['chl_a'])
 y = cleaned_data['chl_a']
 
-print(X)
+print(X.head)
 # print(y)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=621)
@@ -58,18 +58,17 @@ print("mean of pred: ", np.mean(y_pred))
 
 
 # Model analysis
-
+plt.figure(1)
 plt.hist(y_pred, 200)
 plt.xlabel("Predicted chl-a (ug/l)")
 plt.ylabel("Frequency")
 plt.title("Prediction Histogram (CPU)")
-plt.show()
 
 
 # PLOT BEST RF PERFORMANCE
 #https://stackoverflow.com/questions/19064772/visualization-of-scatter-plots-with-overlapping-points-in-matplotlib
 from scipy import stats
-
+plt.figure(2)
 values = np.vstack([y_test, y_pred])
 kernel = stats.gaussian_kde(values, bw_method=.02)(values)
 
@@ -81,4 +80,6 @@ plt.yscale('log')
 plt.xlabel('Observed Chl-a (ug/l)')
 plt.ylabel('Predicted Chl-a (ug/l)')
 plt.title('CPU Random Forest Regression')
+
+# Show both at the same time
 plt.show()
