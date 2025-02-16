@@ -7,6 +7,7 @@ load_dotenv()
 from pocketbase import PocketBase  # Client also works the same
 from pocketbase.client import FileUpload
 import numpy as np
+import pandas as pd
 import rasterio
 import matplotlib.pyplot as plt
 import time
@@ -110,7 +111,7 @@ def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float,
     return modified_tif
 
 
-def predict(input_tif : str, id: int, display = True):
+def predict(input_tif : str, lakeid: int, display = True):
     modified_tif = add_suffix_to_filename_at_tif_path(input_tif, "modified")
     with rasterio.open(modified_tif) as src:
         raster_data = src.read()
@@ -118,9 +119,9 @@ def predict(input_tif : str, id: int, display = True):
         transform = src.transform
         crs = src.crs
 
-    # reshape raster data to 2D array for model prediction
     n_bands, n_rows, n_cols = raster_data.shape
-    raster_data_2d = raster_data.reshape(n_bands, -1).T
+    n_samples = n_rows * n_cols
+    raster_data_2d = raster_data.transpose(1, 2, 0).reshape((n_samples,n_bands))
 
     nan_mask = np.isnan(raster_data[0]) # if first band at that pixel is nan, usually rest are too (helps remove "garbage" val from output later)
     neg_inf_mask = np.isneginf(raster_data[0])  # if first band at that pixel is -inf, usually rest are too (helps remove "garbage" val from output later)
@@ -135,13 +136,27 @@ def predict(input_tif : str, id: int, display = True):
     # num_pos_infs = np.isposinf(raster_data_2d).flatten().sum()
     # print("# of +inf values: ", num_pos_infs)
     
-    # perform the prediction
+    # # perform the prediction
     predictions = andrew_model.predict(raster_data_2d)
+
+
+    df = pd.DataFrame(raster_data_2d, columns=cpu_model_training.X_test.columns)
+    df["lagoslakeid"] = lakeid
+    df["pred"] = predictions
+    df = df.drop_duplicates()
+    output_tif_csv = add_suffix_to_filename_at_tif_path(input_tif, "predicted") + '.csv'
+    df.to_csv(output_tif_csv)
+    print("csv saved to " + output_tif_csv)
+
+    # print(predictions)
 
     # reshape the predictions back to the original raster shape
     predictions_raster = predictions.reshape(n_rows, n_cols)
     predictions_raster[neg_inf_mask] = np.nan # if the input value was originally -inf, ignore its (normal-seeming) output and make it nan
     predictions_raster[nan_mask] = np.nan # if the input value was originally nan, ignore its (normal-seeming) output and make it nan
+    print("Min predictions: ", np.nanmin(predictions_raster))
+    print("Avg predictions: ", np.nanmean(predictions_raster))
+    print("Max predictions: ", np.nanmax(predictions_raster))
 
     # save the prediction result as a new raster file
     output_tif = add_suffix_to_filename_at_tif_path(input_tif, "predicted")
@@ -249,11 +264,11 @@ for path_tif in tqdm(paths):
         corner1 = list(p(top_left[0], top_left[1], inverse=True)[::-1])
         corner2 = list(p(bottom_right[0], bottom_right[1], inverse=True)[::-1])
         corners = [corner1, corner2]
-        # print("id: ", id, " date: ", date, " scale: ", scale, " corners: ", corners)
+        print("id: ", id, " date: ", date, " scale: ", scale, " corners: ", corners)
 
         # Get constants
         SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant = model_data.get_constants(id)
-        # print("Constants based on id: ", SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
+        print(f"Constants based on id({id}): ", SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
         modified_path_tif = modify_tif(path_tif, SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
