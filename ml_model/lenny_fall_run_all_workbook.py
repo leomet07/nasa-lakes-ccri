@@ -73,20 +73,20 @@ def add_suffix_to_filename_at_tif_path(filename : str, suffix : str):
     return to_tif_folder_path
 
 
-def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float, pct_dev_constant: float, pct_ag_constant : float) -> str:
+def modify_tif(input_tif : str, SA_SQ_KM_FROM_SHAPEFILE_constant : float, pct_dev_constant: float, pct_ag_constant : float) -> str:
     with rasterio.open(input_tif) as src:
         raster_data = src.read()
         profile = src.profile  # Get the profile of the existing raster
 
 
     # create new bands
-    SA_band = np.full_like(raster_data[0], SA_constant, dtype=raster_data.dtype)
-    Max_depth_band = np.full_like(raster_data[0], Max_depth_constant, dtype=raster_data.dtype)
+    SA_SQ_KM_band = np.full_like(raster_data[0], SA_SQ_KM_FROM_SHAPEFILE_constant, dtype=raster_data.dtype)
+    # Max_depth_band = np.full_like(raster_data[0], Max_depth_constant, dtype=raster_data.dtype)
     pct_dev_band = np.full_like(raster_data[0], pct_dev_constant, dtype=raster_data.dtype)
     pct_ag_band = np.full_like(raster_data[0], pct_ag_constant, dtype=raster_data.dtype)
 
     # update profile to reflect additional bands
-    profile.update(count=9)  # (update count to include original bands + 4 new bands)
+    profile.update(count=12)  # (update count to include original bands + 4 new bands)
 
     # output GeoTIFF file
     modified_tif = add_suffix_to_filename_at_tif_path(input_tif, "modified")
@@ -98,10 +98,9 @@ def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float,
             dst.write(raster_data[i-1], indexes=i)
 
         # # write additional bands
-        # dst.write(SA_band, indexes=raster_data.shape[0] + 1)
-        # dst.write(Max_depth_band, indexes=raster_data.shape[0] + 2)
-        # dst.write(pct_dev_band, indexes=raster_data.shape[0] + 3)
-        # dst.write(pct_ag_band, indexes=raster_data.shape[0] + 4)
+        dst.write(SA_SQ_KM_band, indexes=raster_data.shape[0] + 1)
+        dst.write(pct_dev_band, indexes=raster_data.shape[0] + 2)
+        dst.write(pct_ag_band, indexes=raster_data.shape[0] + 3)
         
         # Testing 2 bands
         # dst.write(pct_dev_band, indexes=raster_data.shape[0] + 1)
@@ -272,10 +271,10 @@ for path_tif in tqdm(paths):
         print("id: ", id, " date: ", date, " scale: ", scale, " corners: ", corners)
 
         # Get constants
-        SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant = model_data.get_constants(id)
-        print(f"Constants based on id({id}): ", SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
+        SA_SQ_KM_constant, pct_dev_constant, pct_ag_constant = model_data.get_constants(id)
+        print(f"Constants based on id({id}): ", SA_SQ_KM_constant, pct_dev_constant, pct_ag_constant)
 
-        modified_path_tif = modify_tif(path_tif, SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
+        modified_path_tif = modify_tif(path_tif, SA_SQ_KM_constant, pct_dev_constant, pct_ag_constant)
 
         output_tif, predictions_loop = predict(path_tif, id, display = VISUALIZE_PREDICTIONS)
 

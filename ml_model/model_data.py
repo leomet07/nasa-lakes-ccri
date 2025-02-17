@@ -55,13 +55,17 @@ def prepare_data(df_path, lagosid_path, lulc_path):
 
     # left join df with iws_human, which cuts # of lakes in df to 360 (14k entries of in situ readings)
     df = df.merge(iws_human, on="lagoslakei")
+
+    SA_SQ_KM_DF = pd.read_csv("lagosID_area.csv")
+    df = df.merge(SA_SQ_KM_DF, on="lagoslakei")
+    print(df)
     return df, iws_human # Array of pandas dataframes
 
 
 def prepared_cleaned_data(unclean_data): # Returns CUDF df
-    unclean_data = unclean_data[['chl_a', '443', '493', '560', '665','703', '740', '780', '834', '864']]
+    unclean_data = unclean_data[['chl_a', '443', '493', '560', '665','703', '740', '780', '834', '864', 'SA_SQ_KM_FROM_SHAPEFILE','pct_dev','pct_ag']]
     unclean_data = unclean_data.fillna(NAN_SUBSTITUTE_CONSANT)
-    input_cols = ['443', '493', '560', '665','703', '740', '780', '834', '864']
+    input_cols = ['443', '493', '560', '665','703', '740', '780', '834', '864', 'SA_SQ_KM_FROM_SHAPEFILE','pct_dev','pct_ag']
     for col in unclean_data.select_dtypes(["object"]).columns:
         unclean_data[col] = unclean_data[col].astype("category").cat.codes.astype(np.int32)
 
@@ -80,12 +84,13 @@ def prepared_cleaned_data(unclean_data): # Returns CUDF df
 def get_constants(lakeid):
     filtered_df = all_data[all_data['lagoslakei'] == lakeid] # maybe this lake is from insitu and we know it's depth and surface area?
     
-    SA = filtered_df['SA'].iloc[0] if not filtered_df.empty else NAN_SUBSTITUTE_CONSANT # NAN_SUBSTITUTE_CONSANT = null in our cudf random forest
-    Max_depth = filtered_df['Max.depth'].iloc[0]  if not filtered_df.empty else NAN_SUBSTITUTE_CONSANT
+    # SA = filtered_df['SA'].iloc[0] if not filtered_df.empty else NAN_SUBSTITUTE_CONSANT # NAN_SUBSTITUTE_CONSANT = null in our cudf random forest
+    # Max_depth = filtered_df['Max.depth'].iloc[0]  if not filtered_df.empty else NAN_SUBSTITUTE_CONSANT
+    SA_SQ_KM = filtered_df['SA_SQ_KM_FROM_SHAPEFILE'].iloc[0]
     pct_dev = lagos_lookup_table['pct_dev'].iloc[0] # Lagos look up table should have this
     pct_ag = lagos_lookup_table['pct_ag'].iloc[0] # Lagos look up table should have this
 
-    return SA, Max_depth, pct_dev, pct_ag
+    return SA_SQ_KM, pct_dev, pct_ag
 
 
 all_data, lagos_lookup_table = prepare_data(training_df_path, lagosid_path, lulc_path) # Returns insitu points merged with lagoslookup table AND lagoslookup table for all non-insitu lakes as well

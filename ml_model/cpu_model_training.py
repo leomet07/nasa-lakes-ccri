@@ -79,6 +79,8 @@ print(f"RMSE: {rmse}")
 if GRAPH_AND_COMPARE_PERFORMANCE:
     print("mean of test: ", np.mean(y_test))
     print("mean of pred: ", np.mean(y_pred))
+    print("min of test: ", np.min(y_test))
+    print("min of pred: ", np.min(y_pred))
     # Model analysis
     plt.figure(1)
     plt.hist(y_pred, 200)
