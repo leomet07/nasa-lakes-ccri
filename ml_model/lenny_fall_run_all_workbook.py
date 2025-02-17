@@ -282,7 +282,7 @@ for path_tif in tqdm(paths):
         if VISUALIZE_PREDICTIONS:
             print("Output tif: ", os.path.join(os.getcwd(),output_tif))
 
-        output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = VISUALIZE_PREDICTIONS)
+        output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = False)
         
         if IS_IN_PRODUCTION_MODE:
             upload_spatial_map(id, output_tif, output_path_png, date, corners, scale)
