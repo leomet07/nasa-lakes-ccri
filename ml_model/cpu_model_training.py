@@ -79,7 +79,6 @@ print(f"RMSE: {rmse}")
 if GRAPH_AND_COMPARE_PERFORMANCE:
     print("mean of test: ", np.mean(y_test))
     print("mean of pred: ", np.mean(y_pred))
-
     # Model analysis
     plt.figure(1)
     plt.hist(y_pred, 200)
@@ -101,6 +100,21 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.xlabel('Observed Chl-a (ug/l)')
     plt.ylabel('Predicted Chl-a (ug/l)')
     plt.title('CPU Random Forest Regression')
+
+
+    # Feature importances plot
+    plt.figure(3)
+    feature_importances = andrew_model.feature_importances_
+    indices = np.argsort(feature_importances)
+    features = X.columns
+    plt.title('Feature Importances')
+    # plt.barh(range(len(indices)), feature_importances[indices], color='b', align='center') # Sorted
+    # plt.yticks(range(len(indices)), [features[i] for i in indices])
+    plt.barh(features, feature_importances)
+    # plt.yticks(range(len(indices)), [features[i] for i in indices])
+
+    plt.xlabel('Relative Importance')
+    plt.show()
 
     # Show both at the same time
     plt.show()
