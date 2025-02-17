@@ -59,9 +59,9 @@ def prepare_data(df_path, lagosid_path, lulc_path):
 
 
 def prepared_cleaned_data(unclean_data): # Returns CUDF df
-    unclean_data = unclean_data[['chl_a', '443', '493', '560', '665','703', '740', '780', '834', '864','SA','Max.depth','pct_dev','pct_ag']]
+    unclean_data = unclean_data[['chl_a', '443', '493', '560', '665','703', '740', '780', '834', '864']]
     unclean_data = unclean_data.fillna(NAN_SUBSTITUTE_CONSANT)
-    input_cols = ['443', '493', '560', '665','703', '740', '780', '834', '864','SA','Max.depth','pct_dev','pct_ag']
+    input_cols = ['443', '493', '560', '665','703', '740', '780', '834', '864']
     for col in unclean_data.select_dtypes(["object"]).columns:
         unclean_data[col] = unclean_data[col].astype("category").cat.codes.astype(np.int32)
 
@@ -91,3 +91,4 @@ def get_constants(lakeid):
 all_data, lagos_lookup_table = prepare_data(training_df_path, lagosid_path, lulc_path) # Returns insitu points merged with lagoslookup table AND lagoslookup table for all non-insitu lakes as well
 cleaned_data = prepared_cleaned_data(all_data)
 cleaned_data = cleaned_data[cleaned_data['chl_a'] < 350] # most values are 0-100, remove the crazy 4,000 outlier
+print(cleaned_data)

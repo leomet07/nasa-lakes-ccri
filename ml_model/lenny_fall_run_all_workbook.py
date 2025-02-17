@@ -86,7 +86,7 @@ def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float,
     pct_ag_band = np.full_like(raster_data[0], pct_ag_constant, dtype=raster_data.dtype)
 
     # update profile to reflect additional bands
-    profile.update(count=13)  # (update count to include original bands + 4 new bands)
+    profile.update(count=9)  # (update count to include original bands + 4 new bands)
 
     # output GeoTIFF file
     modified_tif = add_suffix_to_filename_at_tif_path(input_tif, "modified")
@@ -97,11 +97,15 @@ def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float,
         for i in range(1, raster_data.shape[0] + 1):
             dst.write(raster_data[i-1], indexes=i)
 
-        # write additional bands
-        dst.write(SA_band, indexes=raster_data.shape[0] + 1)
-        dst.write(Max_depth_band, indexes=raster_data.shape[0] + 2)
-        dst.write(pct_dev_band, indexes=raster_data.shape[0] + 3)
-        dst.write(pct_ag_band, indexes=raster_data.shape[0] + 4)
+        # # write additional bands
+        # dst.write(SA_band, indexes=raster_data.shape[0] + 1)
+        # dst.write(Max_depth_band, indexes=raster_data.shape[0] + 2)
+        # dst.write(pct_dev_band, indexes=raster_data.shape[0] + 3)
+        # dst.write(pct_ag_band, indexes=raster_data.shape[0] + 4)
+        
+        # Testing 2 bands
+        # dst.write(pct_dev_band, indexes=raster_data.shape[0] + 1)
+        # dst.write(pct_ag_band, indexes=raster_data.shape[0] + 2)
 
 
         dst.transform = src.transform
@@ -249,6 +253,7 @@ def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path 
 for path_tif in tqdm(paths):
     path_tif = os.path.join(input_tif_folder, path_tif)
     try:
+        print(f"Opening {path_tif  }")
         with rasterio.open(path_tif) as raster:
             tags = raster.tags()
             id = int(tags["id"])
