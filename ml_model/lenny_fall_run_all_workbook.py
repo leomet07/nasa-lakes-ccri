@@ -158,8 +158,9 @@ def predict(input_tif : str, lakeid: int, display = True):
     predictions_raster[neg_inf_mask] = np.nan # if the input value was originally -inf, ignore its (normal-seeming) output and make it nan
     predictions_raster[nan_mask] = np.nan # if the input value was originally nan, ignore its (normal-seeming) output and make it nan
     print("Min predictions: ", np.nanmin(predictions_raster))
-    print("Avg predictions: ", np.nanmean(predictions_raster))
     print("Max predictions: ", np.nanmax(predictions_raster))
+    print("Avg predictions: ", np.nanmean(predictions_raster))
+    print("STD predictions: ", np.nanstd(predictions_raster))
 
     # save the prediction result as a new raster file
     output_tif = add_suffix_to_filename_at_tif_path(input_tif, "predicted")
