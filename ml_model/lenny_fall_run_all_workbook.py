@@ -115,7 +115,7 @@ def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float,
     return modified_tif
 
 
-def predict(input_tif : str, lakeid: int, display = True):
+def predict(input_tif : str, lakeid: int, display = True, display_title = ""):
     modified_tif = add_suffix_to_filename_at_tif_path(input_tif, "modified")
     with rasterio.open(modified_tif) as src:
         raster_data = src.read()
@@ -178,9 +178,11 @@ def predict(input_tif : str, lakeid: int, display = True):
 
     # plot the result
     if display:
-        plt.imshow(predictions_raster, cmap='viridis')
+        min_cbar_value = 0
+        max_cbar_value = 60
+        plt.imshow(predictions_raster, cmap='viridis', vmin=min_cbar_value, vmax=max_cbar_value)
         plt.colorbar()
-        plt.title('Predicted Values')
+        plt.title(display_title or f'Predicted Values for {os.path.basename(modified_tif)}')
         plt.show()
 
     return output_tif, predictions_raster
@@ -278,7 +280,7 @@ for path_tif in tqdm(paths):
 
         modified_path_tif = modify_tif(path_tif, SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
-        output_tif, predictions_loop = predict(path_tif, id, display = VISUALIZE_PREDICTIONS)
+        output_tif, predictions_loop = predict(path_tif, id, display = VISUALIZE_PREDICTIONS, display_title=f"Predicted values for lake{id} on {date}")
 
         if VISUALIZE_PREDICTIONS:
             print("Output tif: ", os.path.join(os.getcwd(),output_tif))
