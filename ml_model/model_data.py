@@ -90,5 +90,5 @@ def get_constants(lakeid):
 
 all_data, lagos_lookup_table = prepare_data(training_df_path, lagosid_path, lulc_path) # Returns insitu points merged with lagoslookup table AND lagoslookup table for all non-insitu lakes as well
 cleaned_data = prepared_cleaned_data(all_data)
-cleaned_data = cleaned_data[cleaned_data['chl_a'] < 350] # most values are 0-100, remove the crazy 4,000 outlier
+cleaned_data = cleaned_data[cleaned_data['chl_a'] < 100] # most values are 0-100, remove the crazy 4,000 outlier
 print(cleaned_data)
