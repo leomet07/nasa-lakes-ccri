@@ -45,9 +45,12 @@ def get_circular_section_from_file(
 ):
     with rasterio.open(file_path) as src:
         check_src(src)
+
         x_res = src.res[0]  # same as src.res[1]
+        scale = src.tags()["scale"]
+
         circle = Point(lng, lat).buffer(
-            x_res * (radius_in_meters / float(src.tags()["scale"]))
+            x_res * (radius_in_meters / float(scale))
         )  # however many x_res sized pixels needed for buffer of radius at downloaded scale
 
         out_image, transformed = rasterio.mask.mask(
