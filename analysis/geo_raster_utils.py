@@ -1,40 +1,37 @@
 import rasterio
-import pyproj
-from pyproj import Proj
-from shapely.geometry import Point, mapping
+from shapely.geometry import Point
 import rasterio.mask
 import numpy as np
-from functools import partial
-from shapely.ops import transform
+import sys
 
-print(
-    "This script helps see the geographic coordinates of the top left and bottom right corners of the input tiff"
-)
-input_tif = input("Enter the filename: ")
 
-lat = 42.20966772115973
-lng = -79.44488525390626  # Open the raster
+def get_statistics_abt_point(raster_path: str, lat: float, lng: float):
+    with rasterio.open(raster_path) as src:
+        x_res = src.res[0]  # same as src.res[1]
+        circle = Point(lng, lat).buffer(
+            x_res * (60 / float(src.tags()["scale"]))
+        )  # however many x_res sized pixels needed for 60m buffer at downloaded scale
 
-with rasterio.open(input_tif) as src:
-    x_res = src.res[0]  # same as src.res[1]
-    circle = Point(lng, lat).buffer(
-        x_res * (60 / float(src.tags()["scale"]))
-    )  # however many x_res sized pixels needed for 60m buffer at downloaded scale
+        out_image, transformed = rasterio.mask.mask(
+            src, [circle], invert=False, crop=True
+        )  # read pixels within just the 60m circle mask
 
-    out_image, transformed = rasterio.mask.mask(src, [circle], invert=False, crop=True)
+    flatten_raster_array = out_image.flatten()
+    flatten_raster_array = flatten_raster_array[
+        np.isfinite(flatten_raster_array)
+    ]  # Remove infinities, nans
 
-    out_profile = src.profile.copy()
+    max_val = np.nanmax(flatten_raster_array)
+    min_val = np.nanmin(flatten_raster_array)
+    mean_val = np.nanmean(flatten_raster_array)  # mean EXCLUDING nans
+    stdev = np.nanstd(flatten_raster_array)  # std EXCLUDING nans
 
-    print("width, height:", out_image.shape[2], out_image.shape[1])
+    return max_val, min_val, mean_val, stdev
 
-    print(out_image)
 
-out_profile.update(
-    {
-        "width": out_image.shape[2],
-        "height": out_image.shape[1],
-        "transform": transformed,
-    }
-)
-with rasterio.open("out.tif", "w", **out_profile) as dst:
-    dst.write(out_image)
+if __name__ == "__main__":
+    ilat = 42.20966772115973
+    ilng = -79.44488525390626  # Open the raster
+
+    stats = get_statistics_abt_point(sys.argv[1], ilat, ilng)
+    print(stats)
