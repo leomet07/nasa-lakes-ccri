@@ -110,7 +110,7 @@ def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float,
     return modified_tif
 
 
-def predict(input_tif : str, id: int, tags, display = True):
+def predict(input_tif : str, lakeid: int, tags, display = True):
     modified_tif = add_suffix_to_filename_at_tif_path(input_tif, "modified")
     with rasterio.open(modified_tif) as src:
         raster_data = src.read()
@@ -151,9 +151,11 @@ def predict(input_tif : str, id: int, tags, display = True):
 
     # plot the result
     if display:
-        plt.imshow(predictions_raster, cmap='viridis')
+        min_cbar_value = 0
+        max_cbar_value = 60
+        plt.imshow(predictions_raster, cmap='viridis', vmin=min_cbar_value, vmax=max_cbar_value)
         plt.colorbar()
-        plt.title('Predicted Values')
+        plt.title(f"Predicted values for lake{lakeid} on {tags["date"]}")
         plt.show()
 
     return output_tif, predictions_raster
