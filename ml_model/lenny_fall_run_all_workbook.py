@@ -120,26 +120,16 @@ def predict(input_tif : str, lakeid: int, tags, display = True):
     n_bands, n_rows, n_cols = raster_data.shape
     raster_data_2d = raster_data.reshape(n_bands, -1).T
 
-    nan_mask = np.isnan(raster_data[0]) # if first band at that pixel is nan, usually rest are too (helps remove "garbage" val from output later)
-    neg_inf_mask = np.isneginf(raster_data[0])  # if first band at that pixel is -inf, usually rest are too (helps remove "garbage" val from output later)
+    non_finite_val_mask = ~np.isfinite(raster_data[0]) # if first band at that pixel is nan, inf, or -inf, usually rest are too (helps remove "garbage" val from output later)
     
-    raster_data_2d[np.isnan(raster_data_2d)] = model_data.NAN_SUBSTITUTE_CONSANT # Replace with NAN_SUB_CONSTANT or mean of general, but this pixels output  will later be removed anyway
-    raster_data_2d[np.isneginf(raster_data_2d)] = model_data.NAN_SUBSTITUTE_CONSANT # Replace with NAN_SUB_CONSTANT or of general, but this pixels output will later be removed anyway
+    raster_data_2d[~np.isfinite(raster_data_2d)] = model_data.NAN_SUBSTITUTE_CONSANT # Replace with NAN_SUB_CONSTANT or mean of general, but this pixels output  will later be removed anyway
 
-    # num_nans = np.isnan(raster_data_2d).flatten().sum() # sum of 0 for false and 1 for true
-    # print("# of nan values: ", num_nans)
-    # num_neg_infs = np.isneginf(raster_data_2d).flatten().sum()
-    # print("# of -inf values: ", num_neg_infs)
-    # num_pos_infs = np.isposinf(raster_data_2d).flatten().sum()
-    # print("# of +inf values: ", num_pos_infs)
-    
     # perform the prediction
     predictions = andrew_model.predict(raster_data_2d)
 
     # reshape the predictions back to the original raster shape
     predictions_raster = predictions.reshape(n_rows, n_cols)
-    predictions_raster[neg_inf_mask] = np.nan # if the input value was originally -inf, ignore its (normal-seeming) output and make it nan
-    predictions_raster[nan_mask] = np.nan # if the input value was originally nan, ignore its (normal-seeming) output and make it nan
+    predictions_raster[non_finite_val_mask] = np.nan # if the input value was originally nan, -inf, or, ignore its (normal-seeming) output and make it nan
 
     # save the prediction result as a new raster file
     output_tif = add_suffix_to_filename_at_tif_path(input_tif, "predicted")
@@ -257,7 +247,7 @@ for path_tif in tqdm(paths):
         if VISUALIZE_PREDICTIONS:
             print("Output tif: ", os.path.join(os.getcwd(),output_tif))
 
-        output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = VISUALIZE_PREDICTIONS)
+        output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = False)
         
         if IS_IN_PRODUCTION_MODE:
             upload_spatial_map(id, output_tif, output_path_png, date, corners, scale)
