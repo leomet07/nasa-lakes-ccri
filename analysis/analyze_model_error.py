@@ -23,6 +23,9 @@ all_data = pd.read_csv(
 
 all_data = all_data[all_data["chl_a"] < 100]  # filter to chl_a less than 100
 
+abs_errors = []
+squared_errors = []
+
 for index, row in tqdm(all_data.iterrows(), total=len(all_data)):
     lagoslakeid = row["lagoslakei"]
     lat = row["MEAN_lat"]
@@ -52,6 +55,12 @@ for index, row in tqdm(all_data.iterrows(), total=len(all_data)):
         prediction_mean_val = stats[2]
         error = prediction_mean_val - true_chl_a
 
+        abs_error = abs(error)
+        squared_error = abs_error**2
+
+        abs_errors.append(abs_error)
+        squared_errors.append(squared_error)
+
         print(
             "True Value: ",
             true_chl_a,
@@ -67,3 +76,8 @@ for index, row in tqdm(all_data.iterrows(), total=len(all_data)):
             print(f"Only NAN values within circle about point. Was there a cloud?")
         else:
             raise e
+
+mean_absolute_error = float(sum(abs_errors)) / len(abs_errors)
+root_mean_squared_error = (sum(squared_errors) / len(squared_errors)) ** 0.5
+print("MAE:", mean_absolute_error)
+print("RMSE:", root_mean_squared_error)
