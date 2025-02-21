@@ -115,13 +115,11 @@ def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float,
     return modified_tif
 
 
-def predict(input_tif : str, lakeid: int, display = True, display_title = ""):
+def predict(input_tif : str, id: int, tags, display = True):
     modified_tif = add_suffix_to_filename_at_tif_path(input_tif, "modified")
     with rasterio.open(modified_tif) as src:
         raster_data = src.read()
         profile = src.profile
-        transform = src.transform
-        crs = src.crs
 
     n_bands, n_rows, n_cols = raster_data.shape
     n_samples = n_rows * n_cols
@@ -166,15 +164,10 @@ def predict(input_tif : str, lakeid: int, display = True, display_title = ""):
     # save the prediction result as a new raster file
     output_tif = add_suffix_to_filename_at_tif_path(input_tif, "predicted")
 
-    with rasterio.open(output_tif, 'w',
-                      driver='GTiff',
-                      height=n_rows,
-                      width=n_cols,
-                      count=1,
-                      dtype=predictions_raster.dtype,
-                      crs=crs,
-                      transform=transform) as dst:
-        dst.write(predictions_raster, 1)
+    profile.update(count=1) # only 1 output band, chl_a concentration!
+    with rasterio.open(output_tif, 'w', **profile) as dst:
+        dst.write(predictions_raster, 1) # write to band 1
+        dst.update_tags(**tags)
 
     # plot the result
     if display:
@@ -182,7 +175,7 @@ def predict(input_tif : str, lakeid: int, display = True, display_title = ""):
         max_cbar_value = 60
         plt.imshow(predictions_raster, cmap='viridis', vmin=min_cbar_value, vmax=max_cbar_value)
         plt.colorbar()
-        plt.title(display_title or f'Predicted Values for {os.path.basename(modified_tif)}')
+        plt.title(f"Predicted values for lake{id} on {tags["date"]}")
         plt.show()
 
     return output_tif, predictions_raster
@@ -280,7 +273,7 @@ for path_tif in tqdm(paths):
 
         modified_path_tif = modify_tif(path_tif, SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
-        output_tif, predictions_loop = predict(path_tif, id, display = VISUALIZE_PREDICTIONS, display_title=f"Predicted values for lake{id} on {date}")
+        output_tif, predictions_loop = predict(path_tif, id, tags, display = VISUALIZE_PREDICTIONS)
 
         if VISUALIZE_PREDICTIONS:
             print("Output tif: ", os.path.join(os.getcwd(),output_tif))
