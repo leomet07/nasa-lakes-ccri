@@ -42,7 +42,7 @@ for index, row in tqdm(all_data.iterrows(), total=len(all_data)):
     if len(matched_predictions) == 0:
         continue  # did not find any prediction image with insitu date
 
-    print(f"Found prediction for Lake{lagoslakeid} on {date}")
+    # print(f"Found prediction for Lake{lagoslakeid} on {date}")
 
     spatial_prediction = matched_predictions.iloc[0]
     file_path = f"{ROOT_DB_FILEPATH}/pb_data/storage/{spatial_prediction["collection_id"]}/{spatial_prediction["id"]}/{spatial_prediction["raster_image"]}"
@@ -61,19 +61,20 @@ for index, row in tqdm(all_data.iterrows(), total=len(all_data)):
         abs_errors.append(abs_error)
         squared_errors.append(squared_error)
 
-        print(
-            "True Value: ",
-            true_chl_a,
-            "Prediction (mean) value: ",
-            prediction_mean_val,
-            "Error: ",
-            error,
-        )
+        # print(
+        #     "True Value: ",
+        #     true_chl_a,
+        #     "Prediction (mean) value: ",
+        #     prediction_mean_val,
+        #     "Error: ",
+        #     error,
+        # )
     except ValueError as e:
         # ValueError: zero-size array to reduction operation fmax which has no identity
         # Means only nans or -infs in circle raster which got filtered out
         if str(e).startswith("zero-size array"):
-            print(f"Only NAN values within circle about point. Was there a cloud?")
+            pass
+            # print(f"Only NAN values within circle about point. Was there a cloud?")
         else:
             raise e
 

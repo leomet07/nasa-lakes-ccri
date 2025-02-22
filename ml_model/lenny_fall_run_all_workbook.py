@@ -132,14 +132,14 @@ def predict(input_tif : str, lakeid: int, tags, display = True):
     # perform the prediction
     predictions = andrew_model.predict(raster_data_2d)
 
-
-    df = pd.DataFrame(raster_data_2d, columns=cpu_model_training.X_test.columns)
-    df["lagoslakeid"] = lakeid
-    df["pred"] = predictions
-    df = df.drop_duplicates()
-    output_tif_csv = add_suffix_to_filename_at_tif_path(input_tif, "predicted") + '.csv'
-    df.to_csv(output_tif_csv)
-    print("csv saved to " + output_tif_csv)
+    if not IS_IN_PRODUCTION_MODE:
+        df = pd.DataFrame(raster_data_2d, columns=cpu_model_training.X_test.columns)
+        df["lagoslakeid"] = lakeid
+        df["pred"] = predictions
+        df = df.drop_duplicates()
+        output_tif_csv = add_suffix_to_filename_at_tif_path(input_tif, "predicted") + '.csv'
+        df.to_csv(output_tif_csv)
+        print("csv saved to " + output_tif_csv)
 
     # print(predictions)
 
@@ -147,10 +147,12 @@ def predict(input_tif : str, lakeid: int, tags, display = True):
     predictions_raster = predictions.reshape(n_rows, n_cols)
 
     predictions_raster[non_finite_val_mask] = np.nan # if the input value was originally nan, -inf, or, ignore its (normal-seeming) output and make it nan
-    print("Min predictions: ", np.nanmin(predictions_raster))
-    print("Max predictions: ", np.nanmax(predictions_raster))
-    print("Avg predictions: ", np.nanmean(predictions_raster))
-    print("STD predictions: ", np.nanstd(predictions_raster))
+
+    if not IS_IN_PRODUCTION_MODE:
+        print("Min predictions: ", np.nanmin(predictions_raster))
+        print("Max predictions: ", np.nanmax(predictions_raster))
+        print("Avg predictions: ", np.nanmean(predictions_raster))
+        print("STD predictions: ", np.nanstd(predictions_raster))
 
     # save the prediction result as a new raster file
     output_tif = add_suffix_to_filename_at_tif_path(input_tif, "predicted")
@@ -240,7 +242,7 @@ def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path 
 for path_tif in tqdm(paths):
     path_tif = os.path.join(input_tif_folder, path_tif)
     try:
-        print(f"Opening {path_tif  }")
+        # print(f"Opening {path_tif  }")
         with rasterio.open(path_tif) as raster:
             tags = raster.tags()
             id = int(tags["id"])
@@ -256,11 +258,11 @@ for path_tif in tqdm(paths):
         corner1 = list(p(top_left[0], top_left[1], inverse=True)[::-1])
         corner2 = list(p(bottom_right[0], bottom_right[1], inverse=True)[::-1])
         corners = [corner1, corner2]
-        print("id: ", id, " date: ", date, " scale: ", scale, " corners: ", corners)
+        # print("id: ", id, " date: ", date, " scale: ", scale, " corners: ", corners)
 
         # Get constants
         SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant = model_data.get_constants(id)
-        print(f"Constants based on id({id}): ", SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
+        # print(f"Constants based on id({id}): ", SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
         modified_path_tif = modify_tif(path_tif, SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
