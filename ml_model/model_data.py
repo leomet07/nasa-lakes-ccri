@@ -56,9 +56,9 @@ def prepare_data(df_path, lagosid_path, lulc_path):
     # left join df with iws_human, which cuts # of lakes in df to 360 (14k entries of in situ readings)
     df = df.merge(iws_human, on="lagoslakei")
 
-    SA_SQ_KM_DF = pd.read_csv("lagosID_area.csv")
-    df = df.merge(SA_SQ_KM_DF, on="lagoslakei")
-    return df, iws_human # Array of pandas dataframes
+    sa_sq_km_df = pd.read_csv("lagosID_area.csv")
+    df = df.merge(sa_sq_km_df, on="lagoslakei")
+    return df, iws_human, sa_sq_km_df # Array of pandas dataframes
 
 
 def prepared_cleaned_data(unclean_data): # Returns CUDF df
@@ -81,18 +81,17 @@ def prepared_cleaned_data(unclean_data): # Returns CUDF df
 
 # define constants for new bands
 def get_constants(lakeid):
-    filtered_df = all_data[all_data['lagoslakei'] == lakeid] # maybe this lake is from insitu and we know it's depth and surface area?
-    
-    # SA = filtered_df['SA'].iloc[0] if not filtered_df.empty else NAN_SUBSTITUTE_CONSANT # NAN_SUBSTITUTE_CONSANT = null in our cudf random forest
-    # Max_depth = filtered_df['Max.depth'].iloc[0]  if not filtered_df.empty else NAN_SUBSTITUTE_CONSANT
-    SA_SQ_KM = filtered_df['SA_SQ_KM_FROM_SHAPEFILE'].iloc[0]
-    pct_dev = lagos_lookup_table['pct_dev'].iloc[0] # Lagos look up table should have this
-    pct_ag = lagos_lookup_table['pct_ag'].iloc[0] # Lagos look up table should have this
+    lagos_lookup_table_filtered = lagos_lookup_table[lagos_lookup_table['lagoslakei'] == lakeid] 
+    sa_sq_km_lookup_table_filtered = sa_sq_km_lookup_table[sa_sq_km_lookup_table['lagoslakei'] == lakeid]
+
+    SA_SQ_KM = sa_sq_km_lookup_table_filtered['SA_SQ_KM_FROM_SHAPEFILE'].iloc[0]
+    pct_dev = lagos_lookup_table_filtered['pct_dev'].iloc[0] # Lagos look up table should have this
+    pct_ag = lagos_lookup_table_filtered['pct_ag'].iloc[0] # Lagos look up table should have this
 
     return SA_SQ_KM, pct_dev, pct_ag
 
 
-all_data, lagos_lookup_table = prepare_data(training_df_path, lagosid_path, lulc_path) # Returns insitu points merged with lagoslookup table AND lagoslookup table for all non-insitu lakes as well
+all_data, lagos_lookup_table, sa_sq_km_lookup_table = prepare_data(training_df_path, lagosid_path, lulc_path) # Returns insitu points merged with lagoslookup table AND lagoslookup table for all non-insitu lakes as well
 cleaned_data = prepared_cleaned_data(all_data)
 cleaned_data = cleaned_data[cleaned_data['chl_a'] < 100] # most values are 0-100, remove the crazy 4,000 outlier
 
