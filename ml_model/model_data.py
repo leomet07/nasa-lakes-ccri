@@ -58,7 +58,6 @@ def prepare_data(df_path, lagosid_path, lulc_path):
 
     SA_SQ_KM_DF = pd.read_csv("lagosID_area.csv")
     df = df.merge(SA_SQ_KM_DF, on="lagoslakei")
-    print(df)
     return df, iws_human # Array of pandas dataframes
 
 
