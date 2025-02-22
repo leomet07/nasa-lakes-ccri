@@ -114,71 +114,60 @@ def modify_tif(input_tif : str, SA_SQ_KM_FROM_SHAPEFILE_constant : float, pct_de
     return modified_tif
 
 
-def predict(input_tif : str, lakeid: int, display = True):
+def predict(input_tif : str, lakeid: int, tags, display = True):
     modified_tif = add_suffix_to_filename_at_tif_path(input_tif, "modified")
     with rasterio.open(modified_tif) as src:
         raster_data = src.read()
         profile = src.profile
-        transform = src.transform
-        crs = src.crs
 
     n_bands, n_rows, n_cols = raster_data.shape
     n_samples = n_rows * n_cols
     raster_data_2d = raster_data.transpose(1, 2, 0).reshape((n_samples,n_bands))
 
-    nan_mask = np.isnan(raster_data[0]) # if first band at that pixel is nan, usually rest are too (helps remove "garbage" val from output later)
-    neg_inf_mask = np.isneginf(raster_data[0])  # if first band at that pixel is -inf, usually rest are too (helps remove "garbage" val from output later)
+    non_finite_val_mask = ~np.isfinite(raster_data[0]) # if first band at that pixel is nan, inf, or -inf, usually rest are too (helps remove "garbage" val from output later)
     
-    raster_data_2d[np.isnan(raster_data_2d)] = model_data.NAN_SUBSTITUTE_CONSANT # Replace with NAN_SUB_CONSTANT or mean of general, but this pixels output  will later be removed anyway
-    raster_data_2d[np.isneginf(raster_data_2d)] = model_data.NAN_SUBSTITUTE_CONSANT # Replace with NAN_SUB_CONSTANT or of general, but this pixels output will later be removed anyway
+    raster_data_2d[~np.isfinite(raster_data_2d)] = model_data.NAN_SUBSTITUTE_CONSANT # Replace with NAN_SUB_CONSTANT or mean of general, but this pixels output  will later be removed anyway
 
-    # num_nans = np.isnan(raster_data_2d).flatten().sum() # sum of 0 for false and 1 for true
-    # print("# of nan values: ", num_nans)
-    # num_neg_infs = np.isneginf(raster_data_2d).flatten().sum()
-    # print("# of -inf values: ", num_neg_infs)
-    # num_pos_infs = np.isposinf(raster_data_2d).flatten().sum()
-    # print("# of +inf values: ", num_pos_infs)
-    
-    # # perform the prediction
+    # perform the prediction
     predictions = andrew_model.predict(raster_data_2d)
 
-
-    df = pd.DataFrame(raster_data_2d, columns=cpu_model_training.X_test.columns)
-    df["lagoslakeid"] = lakeid
-    df["pred"] = predictions
-    df = df.drop_duplicates()
-    output_tif_csv = add_suffix_to_filename_at_tif_path(input_tif, "predicted") + '.csv'
-    df.to_csv(output_tif_csv)
-    print("csv saved to " + output_tif_csv)
+    if not IS_IN_PRODUCTION_MODE:
+        df = pd.DataFrame(raster_data_2d, columns=cpu_model_training.X_test.columns)
+        df["lagoslakeid"] = lakeid
+        df["pred"] = predictions
+        df = df.drop_duplicates()
+        output_tif_csv = add_suffix_to_filename_at_tif_path(input_tif, "predicted") + '.csv'
+        df.to_csv(output_tif_csv)
+        print("csv saved to " + output_tif_csv)
 
     # print(predictions)
 
     # reshape the predictions back to the original raster shape
     predictions_raster = predictions.reshape(n_rows, n_cols)
-    predictions_raster[neg_inf_mask] = np.nan # if the input value was originally -inf, ignore its (normal-seeming) output and make it nan
-    predictions_raster[nan_mask] = np.nan # if the input value was originally nan, ignore its (normal-seeming) output and make it nan
-    print("Min predictions: ", np.nanmin(predictions_raster))
-    print("Avg predictions: ", np.nanmean(predictions_raster))
-    print("Max predictions: ", np.nanmax(predictions_raster))
+
+    predictions_raster[non_finite_val_mask] = np.nan # if the input value was originally nan, -inf, or, ignore its (normal-seeming) output and make it nan
+
+    if not IS_IN_PRODUCTION_MODE:
+        print("Min predictions: ", np.nanmin(predictions_raster))
+        print("Max predictions: ", np.nanmax(predictions_raster))
+        print("Avg predictions: ", np.nanmean(predictions_raster))
+        print("STD predictions: ", np.nanstd(predictions_raster))
 
     # save the prediction result as a new raster file
     output_tif = add_suffix_to_filename_at_tif_path(input_tif, "predicted")
 
-    with rasterio.open(output_tif, 'w',
-                      driver='GTiff',
-                      height=n_rows,
-                      width=n_cols,
-                      count=1,
-                      dtype=predictions_raster.dtype,
-                      crs=crs,
-                      transform=transform) as dst:
-        dst.write(predictions_raster, 1)
+    profile.update(count=1) # only 1 output band, chl_a concentration!
+    with rasterio.open(output_tif, 'w', **profile) as dst:
+        dst.write(predictions_raster, 1) # write to band 1
+        dst.update_tags(**tags)
 
     # plot the result
     if display:
-        plt.imshow(predictions_raster, cmap='viridis')
+        min_cbar_value = 0
+        max_cbar_value = 60
+        plt.imshow(predictions_raster, cmap='viridis', vmin=min_cbar_value, vmax=max_cbar_value)
         plt.colorbar()
-        plt.title('Predicted Values')
+        plt.title(f"Predicted values for lake{lakeid} on {tags["date"]}")
         plt.show()
 
     return output_tif, predictions_raster
@@ -252,7 +241,7 @@ def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path 
 for path_tif in tqdm(paths):
     path_tif = os.path.join(input_tif_folder, path_tif)
     try:
-        print(f"Opening {path_tif  }")
+        # print(f"Opening {path_tif  }")
         with rasterio.open(path_tif) as raster:
             tags = raster.tags()
             id = int(tags["id"])
@@ -268,15 +257,15 @@ for path_tif in tqdm(paths):
         corner1 = list(p(top_left[0], top_left[1], inverse=True)[::-1])
         corner2 = list(p(bottom_right[0], bottom_right[1], inverse=True)[::-1])
         corners = [corner1, corner2]
-        print("id: ", id, " date: ", date, " scale: ", scale, " corners: ", corners)
+        # print("id: ", id, " date: ", date, " scale: ", scale, " corners: ", corners)
 
         # Get constants
         SA_SQ_KM_constant, pct_dev_constant, pct_ag_constant = model_data.get_constants(id)
-        print(f"Constants based on id({id}): ", SA_SQ_KM_constant, pct_dev_constant, pct_ag_constant)
+        # print(f"Constants based on id({id}): ", SA_SQ_KM_constant, pct_dev_constant, pct_ag_constant)
 
         modified_path_tif = modify_tif(path_tif, SA_SQ_KM_constant, pct_dev_constant, pct_ag_constant)
 
-        output_tif, predictions_loop = predict(path_tif, id, display = VISUALIZE_PREDICTIONS)
+        output_tif, predictions_loop = predict(path_tif, id, tags, display = VISUALIZE_PREDICTIONS)
 
         if VISUALIZE_PREDICTIONS:
             print("Output tif: ", os.path.join(os.getcwd(),output_tif))
