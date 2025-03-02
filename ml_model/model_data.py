@@ -59,7 +59,7 @@ def prepare_data(df_path, lagosid_path, lulc_path):
 
 
 def prepared_cleaned_data(unclean_data): # Returns CUDF df
-    unclean_data = unclean_data[['chl_a', '443', '493', '560', '665','703', '740', '780', '834', '864']]
+    unclean_data = unclean_data[['chl_a', '443', '493', '560', '665','703', '740', '780', '834', '864']] # Nine bands only
     unclean_data = unclean_data.fillna(NAN_SUBSTITUTE_CONSANT)
     input_cols = ['443', '493', '560', '665','703', '740', '780', '834', '864']
     for col in unclean_data.select_dtypes(["object"]).columns:
