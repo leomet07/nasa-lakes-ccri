@@ -7,6 +7,7 @@ load_dotenv()
 from pocketbase import PocketBase  # Client also works the same
 from pocketbase.client import FileUpload
 import numpy as np
+import pandas as pd
 import rasterio
 import matplotlib.pyplot as plt
 import time
@@ -17,13 +18,23 @@ from pyproj import Proj
 import uuid
 from tqdm import tqdm
 import gc
+import model_data
+
+IS_CPU_MODE = os.getenv("IS_CPU_MODE").lower() == "true"
+IS_IN_PRODUCTION_MODE = os.getenv("IS_PRODUCTION_MODE").lower() == "true"
+VISUALIZE_PREDICTIONS = os.getenv("VISUALIZE_PREDICTIONS").lower() == "true"
+print("IS_CPU_MODE: ", IS_CPU_MODE)
+print("IS_IN_PRODUCTION_MODE: ", IS_IN_PRODUCTION_MODE)
 
 print("\nCalling model training module...")
-import model_training
-print("Finished calling model training module!\n")
+if IS_CPU_MODE:
+    import cpu_model_training
+    andrew_model = cpu_model_training.andrew_model
+else:
+    import model_training
+    andrew_model = model_training.andrew_model
 
-IS_IN_PRODUCTION_MODE = os.getenv("IS_PRODUCTION_MODE").lower() == "true"
-print("IS_IN_PRODUCTION_MODE: ", IS_IN_PRODUCTION_MODE)
+print("Finished calling model training module!\n")
 
 client = PocketBase(os.getenv("PUBLIC_POCKETBASE_URL"))
 admin_data = client.admins.auth_with_password(os.getenv("POCKETBASE_ADMIN_EMAIL"), os.getenv("POCKETBASE_ADMIN_PASSWORD"))
@@ -77,7 +88,7 @@ def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float,
     pct_ag_band = np.full_like(raster_data[0], pct_ag_constant, dtype=raster_data.dtype)
 
     # update profile to reflect additional bands
-    profile.update(count=13)  # (update count to include original bands + 4 new bands)
+    profile.update(count=9)  # (update count to include original bands + 4 new bands)
 
     # output GeoTIFF file
     modified_tif = add_suffix_to_filename_at_tif_path(input_tif, "modified")
@@ -100,6 +111,7 @@ def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float,
         dst.write(pct_ag_band, indexes=raster_data.shape[0] + bands_to_fill + 4)
 
 
+
         dst.transform = src.transform
         dst.crs = src.crs
 
@@ -107,58 +119,60 @@ def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float,
     return modified_tif
 
 
-def predict(input_tif : str, id: int, display = True):
+def predict(input_tif : str, lakeid: int, tags, display = True):
     modified_tif = add_suffix_to_filename_at_tif_path(input_tif, "modified")
     with rasterio.open(modified_tif) as src:
         raster_data = src.read()
         profile = src.profile
-        transform = src.transform
-        crs = src.crs
 
-    # reshape raster data to 2D array for model prediction
     n_bands, n_rows, n_cols = raster_data.shape
-    raster_data_2d = raster_data.reshape(n_bands, -1).T
+    n_samples = n_rows * n_cols
+    raster_data_2d = raster_data.transpose(1, 2, 0).reshape((n_samples,n_bands))
 
-    # handle NaN values by replacing them with the mean of each band
-    nan_mask_2d = np.isnan(raster_data_2d)
-    nan_mask = np.isnan(raster_data[0])
-    neg_inf_mask = np.isneginf(raster_data[0])
-
-    # num_nans = np.isnan(raster_data_2d).flatten().sum() # sum of 0 for false and 1 for true
-    # print("# of nan values: ", num_nans)
-    # num_neg_infs = np.isneginf(raster_data_2d).flatten().sum()
-    # print("# of -inf values: ", num_neg_infs)
-
-    means = np.nanmean(raster_data_2d, axis=0)
-    raster_data_2d[nan_mask_2d] = np.take(means, np.where(nan_mask_2d)[1]) # to avoid errors when predicting
+    non_finite_val_mask = ~np.isfinite(raster_data[0]) # if first band at that pixel is nan, inf, or -inf, usually rest are too (helps remove "garbage" val from output later)
     
-    print("Predicting ...")
+    raster_data_2d[~np.isfinite(raster_data_2d)] = model_data.NAN_SUBSTITUTE_CONSANT # Replace with NAN_SUB_CONSTANT or mean of general, but this pixels output  will later be removed anyway
+
     # perform the prediction
-    predictions = model_training.andrew_model.predict(raster_data_2d)
+    predictions = andrew_model.predict(raster_data_2d)
+
+    if not IS_IN_PRODUCTION_MODE:
+        df = pd.DataFrame(raster_data_2d, columns=cpu_model_training.X_test.columns)
+        df["lagoslakeid"] = lakeid
+        df["pred"] = predictions
+        df = df.drop_duplicates()
+        output_tif_csv = add_suffix_to_filename_at_tif_path(input_tif, "predicted") + '.csv'
+        df.to_csv(output_tif_csv)
+        print("csv saved to " + output_tif_csv)
+
+    # print(predictions)
 
     # reshape the predictions back to the original raster shape
     predictions_raster = predictions.reshape(n_rows, n_cols)
-    predictions_raster[neg_inf_mask] = np.nan # if the input value was originally -inf, ignore its (normal-seeming) output and make it nan
-    predictions_raster[nan_mask] = np.nan # if the input value was originally nan, ignore its (normal-seeming) output and make it nan
+
+    predictions_raster[non_finite_val_mask] = np.nan # if the input value was originally nan, -inf, or, ignore its (normal-seeming) output and make it nan
+
+    if not IS_IN_PRODUCTION_MODE:
+        print("Min predictions: ", np.nanmin(predictions_raster))
+        print("Max predictions: ", np.nanmax(predictions_raster))
+        print("Avg predictions: ", np.nanmean(predictions_raster))
+        print("STD predictions: ", np.nanstd(predictions_raster))
 
     # save the prediction result as a new raster file
     output_tif = add_suffix_to_filename_at_tif_path(input_tif, "predicted")
 
-    with rasterio.open(output_tif, 'w',
-                      driver='GTiff',
-                      height=n_rows,
-                      width=n_cols,
-                      count=1,
-                      dtype=predictions_raster.dtype,
-                      crs=crs,
-                      transform=transform) as dst:
-        dst.write(predictions_raster, 1)
+    profile.update(count=1) # only 1 output band, chl_a concentration!
+    with rasterio.open(output_tif, 'w', **profile) as dst:
+        dst.write(predictions_raster, 1) # write to band 1
+        dst.update_tags(**tags)
 
     # plot the result
     if display:
-        plt.imshow(predictions_raster, cmap='viridis')
+        min_cbar_value = 0
+        max_cbar_value = 60
+        plt.imshow(predictions_raster, cmap='viridis', vmin=min_cbar_value, vmax=max_cbar_value)
         plt.colorbar()
-        plt.title('Predicted Values')
+        plt.title(f"Predicted values for lake{lakeid} on {tags["date"]}")
         plt.show()
 
     return output_tif, predictions_raster
@@ -232,14 +246,12 @@ def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path 
 for path_tif in tqdm(paths):
     path_tif = os.path.join(input_tif_folder, path_tif)
     try:
+        # print(f"Opening {path_tif  }")
         with rasterio.open(path_tif) as raster:
             tags = raster.tags()
-            # id = int(tags["id"])
-            # date = tags["date"] # date does NOT do anything here, just for title
-            # scale = tags["scale"] # scale does NOT do anything here, just for title
-            id = 81353
-            date = "2023-07-05"
-            scale = 10
+            id = int(tags["id"])
+            date = tags["date"] # date does NOT do anything here, just for title
+            scale = tags["scale"] # scale does NOT do anything here, just for title
 
             top_left = raster.transform * (0, 0)
             bottom_right = raster.transform * (raster.width, raster.height)
@@ -253,19 +265,17 @@ for path_tif in tqdm(paths):
         # print("id: ", id, " date: ", date, " scale: ", scale, " corners: ", corners)
 
         # Get constants
-        SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant = model_training.get_constants(id)
-        # print("Constants based on id: ", SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
+        SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant = model_data.get_constants(id)
+        # print(f"Constants based on id({id}): ", SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
-        print("Modifyng tif...")
         modified_path_tif = modify_tif(path_tif, SA_constant, Max_depth_constant, pct_dev_constant, pct_ag_constant)
 
-        print("Entering prediction function")
-        output_tif, predictions_loop = predict(path_tif, id, display = not IS_IN_PRODUCTION_MODE)
+        output_tif, predictions_loop = predict(path_tif, id, tags, display = VISUALIZE_PREDICTIONS)
 
-        if not IS_IN_PRODUCTION_MODE:
+        if VISUALIZE_PREDICTIONS:
             print("Output tif: ", os.path.join(os.getcwd(),output_tif))
 
-        output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = not IS_IN_PRODUCTION_MODE)
+        output_path_png = save_png(path_tif, png_out_folder, predictions_loop, date, scale, display = False)
         
         if IS_IN_PRODUCTION_MODE:
             upload_spatial_map(id, output_tif, output_path_png, date, corners, scale)
