@@ -101,14 +101,14 @@ def modify_tif(input_tif : str, SA_constant : float, Max_depth_constant : float,
 
         bands_to_fill = 9 - 5 # Landsat has 5, not 9 bands
         for i in range(raster_data.shape[0] + 1, raster_data.shape[0] + 1 + bands_to_fill):
-            null_band = np.full_like(raster_data[0], -99999, dtype=raster_data.dtype)
+            null_band = np.full_like(raster_data[0], model_data.NAN_SUBSTITUTE_CONSANT, dtype=raster_data.dtype)
             dst.write(null_band, indexes=i)
 
         # write additional bands
-        dst.write(SA_band, indexes=raster_data.shape[0] + bands_to_fill + 1)
-        dst.write(Max_depth_band, indexes=raster_data.shape[0] + bands_to_fill + 2)
-        dst.write(pct_dev_band, indexes=raster_data.shape[0] + bands_to_fill + 3)
-        dst.write(pct_ag_band, indexes=raster_data.shape[0] + bands_to_fill + 4)
+        # dst.write(SA_band, indexes=raster_data.shape[0] + bands_to_fill + 1)
+        # dst.write(Max_depth_band, indexes=raster_data.shape[0] + bands_to_fill + 2)
+        # dst.write(pct_dev_band, indexes=raster_data.shape[0] + bands_to_fill + 3)
+        # dst.write(pct_ag_band, indexes=raster_data.shape[0] + bands_to_fill + 4)
 
 
 
