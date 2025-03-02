@@ -28,11 +28,10 @@ print("IS_IN_PRODUCTION_MODE: ", IS_IN_PRODUCTION_MODE)
 
 print("\nCalling model training module...")
 if IS_CPU_MODE:
-    import cpu_model_training
-    andrew_model = cpu_model_training.andrew_model
+    import cpu_model_training as model_training
 else:
     import model_training
-    andrew_model = model_training.andrew_model
+andrew_model = model_training.andrew_model
 
 print("Finished calling model training module!\n")
 
@@ -132,7 +131,7 @@ def predict(input_tif : str, lakeid: int, tags, display = True):
     predictions = andrew_model.predict(raster_data_2d)
 
     if not IS_IN_PRODUCTION_MODE:
-        df = pd.DataFrame(raster_data_2d, columns=cpu_model_training.X_test.columns)
+        df = pd.DataFrame(raster_data_2d, columns=model_training.X_test.columns)
         df["lagoslakeid"] = lakeid
         df["pred"] = predictions
         df = df.drop_duplicates()
