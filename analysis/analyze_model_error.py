@@ -7,6 +7,7 @@ import os
 import sys
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
+from matplotlib import pyplot as plt
 
 load_dotenv()
 ROOT_DB_FILEPATH = os.getenv("ROOT_DB_FILEPATH")  # for accessing files manually
@@ -96,3 +97,11 @@ print("# of matches: ", len(abs_errors))
 unique_lakeids = list(set(lakeids))
 
 print("Unique lakeids: ", len(unique_lakeids))
+
+plt.figure(figsize=(10, 6))
+plt.hist(abs_errors, 50)
+plt.ylabel("Frequency")
+plt.xlabel("Absolute Error (µg/L)")
+plt.xticks(np.arange(0, 51, 5.0))
+plt.title(f"Absolute Error with 2019-2024 August Predictions Compared to {"Testing Portion of" if USE_TEST_DATASET_FOR_ERROR_ANALYSIS else "All"} Corresponding In-Situ Data")
+plt.show()
