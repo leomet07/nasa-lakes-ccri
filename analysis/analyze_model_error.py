@@ -6,10 +6,11 @@ import numpy as np
 import os
 import sys
 from tqdm import tqdm
+from sklearn.model_selection import train_test_split
 
 load_dotenv()
 ROOT_DB_FILEPATH = os.getenv("ROOT_DB_FILEPATH")  # for accessing files manually
-
+USE_TEST_DATASET_FOR_ERROR_ANALYSIS = os.getenv("USE_TEST_DATASET_FOR_ERROR_ANALYSIS") == "true"
 all_spatial_predictions = map(
     vars,  # to convert record to dict
     db_utils.client.collection("spatialPredictionMaps").get_full_list(batch=100_000),
@@ -21,7 +22,10 @@ all_data = pd.read_csv(
     os.getenv("ALL_INPUT_DATA_CSV")
 )  # this later creates cleaned_data for training model
 
-all_data = all_data[all_data["chl_a"] < 100]  # filter to chl_a less than 100
+all_data_train, all_data_test = train_test_split(all_data, test_size=0.2, random_state=621) # constant hard coded from ../ml_model/model_data.py
+
+if USE_TEST_DATASET_FOR_ERROR_ANALYSIS:
+    all_data = all_data_test
 
 abs_errors = []
 squared_errors = []
