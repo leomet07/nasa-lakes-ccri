@@ -64,20 +64,20 @@ def prepare_data(df_path, lagosid_path, lulc_path, lake_area_csv_path):
 
 def prepared_cleaned_data(unclean_data): # Returns CUDF df
     unclean_data = unclean_data[unclean_data['chl_a'] < 100] # most values are 0-100, remove the crazy 4,000 outlier
-
     unclean_data = unclean_data.fillna(NAN_SUBSTITUTE_CONSANT)
-    for col in unclean_data.select_dtypes(["object"]).columns:
-        unclean_data[col] = unclean_data[col].astype("category").cat.codes.astype(np.int32)
-
-    # cast all columns to int32
-    for col in unclean_data.columns:
-        unclean_data[col] = unclean_data[col].astype(np.float32)  # needed for random forest
-
     return unclean_data # Now it is clean
 
 def reduce_to_training_columns(all_data_cleaned):
     input_cols = ['443', '493', '560', '665','703', '740', '780', '834', '864', 'SA_SQ_KM_FROM_SHAPEFILE','pct_dev','pct_ag']
     all_data_cleaned = all_data_cleaned[['chl_a'] + input_cols]
+
+    for col in all_data_cleaned.select_dtypes(["object"]).columns:
+        all_data_cleaned[col] = all_data_cleaned[col].astype("category").cat.codes.astype(np.int32)
+
+    # cast all columns to int32
+    for col in all_data_cleaned.columns:
+        all_data_cleaned[col] = all_data_cleaned[col].astype(np.float32)  # needed for random forest
+
     return all_data_cleaned
 
 # define constants for new bands
@@ -93,7 +93,7 @@ def get_constants(lakeid):
 
 
 all_data_uncleaned, lagos_lookup_table, sa_sq_km_lookup_table = prepare_data(training_df_path, lagosid_path, lulc_path, lake_area_csv_path) # Returns insitu points merged with lagoslookup table AND lagoslookup table for all non-insitu lakes as well
-all_data_uncleaned.to_csv("all_data_uncleaned.csv")
 all_data_cleaned = prepared_cleaned_data(all_data_uncleaned)
+all_data_cleaned.to_csv("all_data_cleaned.csv")
 training_data = reduce_to_training_columns(all_data_cleaned)
 print(training_data)
