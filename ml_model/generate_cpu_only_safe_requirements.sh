@@ -5,4 +5,4 @@
 
 pip freeze > requirements.txt
 
-sed -i.bak -r '/nvidia|cuml|cu12|cuda|dask|pynvml/d' requirements.txt
+sed -i.bak -r '/nvidia|cuml|cu12|cuda|dask|pynvml|nvtx/d' requirements.txt
