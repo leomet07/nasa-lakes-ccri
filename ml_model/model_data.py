@@ -8,6 +8,7 @@ import numpy as np
 load_dotenv()
 
 NAN_SUBSTITUTE_CONSANT = -99999
+RANDOM_STATE = 621
 
 # Creating the proper dataframe (csv) from other datasets
 training_df_path = os.getenv("INSITU_CHLA_TRAINING_DATA_PATH") # training data

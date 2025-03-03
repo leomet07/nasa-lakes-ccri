@@ -27,7 +27,7 @@ training_data = model_data.training_data
 X = training_data.drop(columns=['chl_a'])
 y = training_data['chl_a']
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=621)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=model_data.RANDOM_STATE)
 print("Dataframes created and data split successfully.")
 
 def train_cpu_model():
