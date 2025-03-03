@@ -21,11 +21,11 @@ USE_CACHED_MODEL = os.getenv("USE_CACHED_MODEL").lower() == "true"
 CPU_MODEL_SAVE_FILE = "model_cpu.joblib"
 
 import model_data
-cleaned_data = model_data.cleaned_data
+training_data = model_data.training_data
 # cleaned_data = cleaned_data.replace(-99999.0, np.nan) # Not needed, -99999 working fine
 
-X = cleaned_data.drop(columns=['chl_a'])
-y = cleaned_data['chl_a']
+X = training_data.drop(columns=['chl_a'])
+y = training_data['chl_a']
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=621)
 print("Dataframes created and data split successfully.")
