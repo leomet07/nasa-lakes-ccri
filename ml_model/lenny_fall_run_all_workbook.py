@@ -35,10 +35,11 @@ andrew_model = model_training.andrew_model
 
 print("Finished calling model training module!\n")
 
-client = PocketBase(os.getenv("PUBLIC_POCKETBASE_URL"))
-admin_data = client.admins.auth_with_password(os.getenv("POCKETBASE_ADMIN_EMAIL"), os.getenv("POCKETBASE_ADMIN_PASSWORD"))
+if IS_IN_PRODUCTION_MODE:
+    client = PocketBase(os.getenv("PUBLIC_POCKETBASE_URL"))
+    admin_data = client.admins.auth_with_password(os.getenv("POCKETBASE_ADMIN_EMAIL"), os.getenv("POCKETBASE_ADMIN_PASSWORD"))
 
-all_lakes = client.collection("lakes").get_full_list(100_000, {"requestKey" : None})
+    all_lakes = client.collection("lakes").get_full_list(100_000, {"requestKey" : None})
 
 session_uuid = str(uuid.uuid4())
 print("Current session id: ", session_uuid)
