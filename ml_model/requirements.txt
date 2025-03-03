@@ -93,7 +93,6 @@ notebook==7.2.2
 notebook_shim==0.2.4
 numba==0.60.0
 numpy==2.0.2
-nvtx==0.2.10
 overrides==7.7.0
 packaging==24.2
 pandas==2.2.2
