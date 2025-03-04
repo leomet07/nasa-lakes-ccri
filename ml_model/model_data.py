@@ -66,7 +66,8 @@ def prepared_cleaned_data(unclean_data): # Returns CUDF df
     # unclean_data = unclean_data[(unclean_data['satellite'] == "LC08") | (unclean_data['satellite'] == "LC09")] # if this line uncommented, only Landsat8/9 satellites
     # unclean_data = unclean_data[(unclean_data['satellite'] == "1") | (unclean_data['satellite'] == "2")] # if this line uncommented, only Sentinel2A/2B satellites
 
-    unclean_data = unclean_data[unclean_data['chl_a'] < 100] # most values are 0-100, remove the crazy 4,000 outlier
+    # Filter to everything that is less than 200 ug/L
+    unclean_data = unclean_data[unclean_data['chl_a'] < 200] # most values are 0-100, remove the crazy 4,000 outlier
     unclean_data = unclean_data.fillna(NAN_SUBSTITUTE_CONSANT)
     return unclean_data # Now it is clean
 
