@@ -117,7 +117,8 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.ylabel("Frequency")
     plt.xlabel("Predicted Chl-a (µg/L)")
     plt.title(f"Chlorophyll-a Prediction on Testing Portion of In-Situ Data")
-    plt.xticks(np.arange(0, max(y_pred), 5.0))
+    plt.xticks(np.arange(0, 60, 5.0))
+    plt.xlim((0, 60))
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_testing_part_of_insitu.png"))
 
 
@@ -128,7 +129,8 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.ylabel("Frequency")
     plt.xlabel("Predicted Chl-a Error (µg/L)")
     plt.title(f"Chlorophyll-a Prediction Error on Testing Portion of In-Situ Data")
-    plt.xticks(np.arange(math.floor(min(y_error)), max(y_error), 5.0))
+    plt.xticks(np.arange(-60, 60, 5.0))
+    plt.xlim((-60, 60))
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_error_testing_part_of_insitu.png"))
 
 
@@ -141,7 +143,8 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.ylabel("Frequency")
     plt.xlabel("Predicted Chl-a (µg/L)")
     plt.title(f"Chlorophyll-a Prediction on All In-Situ Data")
-    plt.xticks(np.arange(0, max(all_insitu_predicted), 5.0))
+    plt.xticks(np.arange(0, 60, 5.0))
+    plt.xlim((0, 60))
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_all_insitu.png"))
 
     
@@ -152,7 +155,8 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.ylabel("Frequency")
     plt.xlabel("Predicted Chl-a Error (µg/L)")
     plt.title(f"Chlorophyll-a Prediction Error on All In-Situ Data")
-    plt.xticks(np.arange(math.floor(min(all_insitu_predicted_error)), max(all_insitu_predicted_error), 5.0))
+    plt.xticks(np.arange(-60, 60, 5.0))
+    plt.xlim((-60, 60))
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_error_all_insitu.png"))
 
     plt.figure(7, (14,7))
@@ -161,7 +165,8 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.ylabel("Frequency")
     plt.xlabel("In Situ Chl-a (µg/L)")
     plt.title(f"Histogram of In-Situ Chlorophyll-a")
-    plt.xticks(np.arange(0, max(y.values), 5.0))
+    plt.xticks(np.arange(0, 60, 5.0))
+    plt.xlim((0, 60))
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_insitu_chla.png"))
 
     # Show both at the same time
