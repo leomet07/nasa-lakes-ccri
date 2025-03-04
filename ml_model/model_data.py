@@ -63,6 +63,9 @@ def prepare_data(df_path, lagosid_path, lulc_path, lake_area_csv_path):
 
 
 def prepared_cleaned_data(unclean_data): # Returns CUDF df
+    # unclean_data = unclean_data[(unclean_data['satellite'] == "LC08") | (unclean_data['satellite'] == "LC09")] # if this line uncommented, only Landsat8/9 satellites
+    # unclean_data = unclean_data[(unclean_data['satellite'] == "1") | (unclean_data['satellite'] == "2")] # if this line uncommented, only Sentinel2A/2B satellites
+
     unclean_data = unclean_data[unclean_data['chl_a'] < 100] # most values are 0-100, remove the crazy 4,000 outlier
     unclean_data = unclean_data.fillna(NAN_SUBSTITUTE_CONSANT)
     return unclean_data # Now it is clean
@@ -87,6 +90,9 @@ def get_constants(lakeid):
 
 all_data_uncleaned, lagos_lookup_table, sa_sq_km_lookup_table = prepare_data(training_df_path, lagosid_path, lulc_path, lake_area_csv_path) # Returns insitu points merged with lagoslookup table AND lagoslookup table for all non-insitu lakes as well
 all_data_cleaned = prepared_cleaned_data(all_data_uncleaned)
+
+print("Satellites: " , np.unique(all_data_cleaned["satellite"]))
+
 all_data_cleaned.to_csv("all_data_cleaned.csv")
 training_data = reduce_to_training_columns(all_data_cleaned)
 print(training_data)
