@@ -99,7 +99,7 @@ def modify_tif(input_tif : str, SA_SQ_KM_FROM_SHAPEFILE_constant : float, pct_de
         for i in range(1, raster_data.shape[0] + 1):
             dst.write(raster_data[i-1], indexes=i)
 
-        bands_to_fill = 12 - 5 # Landsat has 5, not 9 bands
+        bands_to_fill = 9 - 5 # Landsat has 5, not 9 bands
         for i in range(raster_data.shape[0] + 1, raster_data.shape[0] + 1 + bands_to_fill):
             print("Writing null band...")
             null_band = np.full_like(raster_data[0], model_data.NAN_SUBSTITUTE_CONSANT, dtype=raster_data.dtype)
