@@ -91,7 +91,7 @@ def get_constants(lakeid):
 all_data_uncleaned, lagos_lookup_table, sa_sq_km_lookup_table = prepare_data(training_df_path, lagosid_path, lulc_path, lake_area_csv_path) # Returns insitu points merged with lagoslookup table AND lagoslookup table for all non-insitu lakes as well
 all_data_cleaned = prepared_cleaned_data(all_data_uncleaned)
 
-print("Satellites: " , np.unique(all_data_cleaned["satellite"]))
+print("Satellites (Sentinel 2A/B: 1/2, Landsat 8/9: LC08/LC09): " , np.unique(all_data_cleaned["satellite"]))
 
 all_data_cleaned.to_csv("all_data_cleaned.csv")
 training_data = reduce_to_training_columns(all_data_cleaned)
