@@ -71,7 +71,7 @@ def prepared_cleaned_data(unclean_data): # Returns CUDF df
     return unclean_data # Now it is clean
 
 def reduce_to_training_columns(all_data_cleaned):
-    input_cols = ['443', '493', '560', '665','703', '740', '780', '834', '864', 'SA_SQ_KM_FROM_SHAPEFILE','pct_dev','pct_ag']
+    input_cols = ['443', '493', '560', '665','703', '740', '780', '834', '864', 'SA_SQ_KM', 'pct_dev','pct_ag']
     all_data_cleaned = all_data_cleaned[['chl_a'] + input_cols]
 
     return all_data_cleaned
