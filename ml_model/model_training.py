@@ -23,17 +23,21 @@ USE_CACHED_MODEL = os.getenv("USE_CACHED_MODEL").lower() == "true"
 GPU_MODEL_SAVE_FILE = "model_gpu.joblib"
 
 import model_data
-cleaned_data = cudf.from_pandas(model_data.cleaned_data)
 
-# Convert float columns to integers
-for col in cleaned_data.columns:
-    cleaned_data[col] = cleaned_data[col].astype(np.float32)
+training_data = cudf.from_pandas(model_data.training_data)
 
-X = cleaned_data.drop(columns=['chl_a'])
-y = cleaned_data['chl_a']
+for col in training_data.select_dtypes(["object"]).columns:
+    training_data[col] = training_data[col].astype("category").cat.codes.astype(np.int32)
+
+# cast all columns to int32
+for col in training_data.columns:
+    training_data[col] = training_data[col].astype(np.float32)  # float32 type needed for cuml random forest
+
+X = training_data.drop(columns=['chl_a'])
+y = training_data['chl_a']
 
 # Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=621)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=model_data.RANDOM_STATE)
 print("Dataframes created and data split successfully.")
 
 def hyper_param_search_and_train_model():

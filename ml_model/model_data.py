@@ -8,14 +8,15 @@ import numpy as np
 load_dotenv()
 
 NAN_SUBSTITUTE_CONSANT = -99999
+RANDOM_STATE = 621
 
 # Creating the proper dataframe (csv) from other datasets
 training_df_path = os.getenv("INSITU_CHLA_TRAINING_DATA_PATH") # training data
 lagosid_path = os.getenv("CCRI_LAKES_WITH_LAGOSID_PATH") # needed to get lagoslakeid for training data entries
 lulc_path = os.getenv("LAGOS_LAKE_INFO_PATH") # General lake info (for constants)
+lake_area_csv_path = os.getenv("LAKE_AREA_CSV_PATH") # Maps lagoslakeid to area in square kilometers (from GIS shapefile)
 
-
-def prepare_data(df_path, lagosid_path, lulc_path):
+def prepare_data(df_path, lagosid_path, lulc_path, lake_area_csv_path):
     # read csvs
     df = pd.read_csv(df_path)
     lagosid = pd.read_csv(lagosid_path)
@@ -55,42 +56,43 @@ def prepare_data(df_path, lagosid_path, lulc_path):
 
     # left join df with iws_human, which cuts # of lakes in df to 360 (14k entries of in situ readings)
     df = df.merge(iws_human, on="lagoslakei")
-    return df, iws_human # Array of pandas dataframes
+
+    sa_sq_km_df = pd.read_csv(lake_area_csv_path)
+    df = df.merge(sa_sq_km_df, on="lagoslakei")
+    return df, iws_human, sa_sq_km_df # Array of pandas dataframes
 
 
 def prepared_cleaned_data(unclean_data): # Returns CUDF df
-    unclean_data = unclean_data[['chl_a', '443', '493', '560', '665','703', '740', '780', '834', '864']]
+    # unclean_data = unclean_data[(unclean_data['satellite'] == "LC08") | (unclean_data['satellite'] == "LC09")] # if this line uncommented, only Landsat8/9 satellites
+    # unclean_data = unclean_data[(unclean_data['satellite'] == "1") | (unclean_data['satellite'] == "2")] # if this line uncommented, only Sentinel2A/2B satellites
+
+    unclean_data = unclean_data[unclean_data['chl_a'] < 100] # most values are 0-100, remove the crazy 4,000 outlier
     unclean_data = unclean_data.fillna(NAN_SUBSTITUTE_CONSANT)
-    input_cols = ['443', '493', '560', '665','703', '740', '780', '834', '864']
-    for col in unclean_data.select_dtypes(["object"]).columns:
-        unclean_data[col] = unclean_data[col].astype("category").cat.codes.astype(np.int32)
-
-    # cast all columns to int32
-    for col in unclean_data.columns:
-        unclean_data[col] = unclean_data[col].astype(np.float32)  # needed for random forest
-
-    # put target/label column first [ classic XGBoost standard ]
-    output_cols = ["chl_a"] + input_cols
-    # unclean_data.to_csv("preindexaspandas.csv")
-    unclean_data = unclean_data.reindex(columns=output_cols)
-
     return unclean_data # Now it is clean
+
+def reduce_to_training_columns(all_data_cleaned):
+    input_cols = ['443', '493', '560', '665','703', '740', '780', '834', '864', 'SA_SQ_KM_FROM_SHAPEFILE','pct_dev','pct_ag']
+    all_data_cleaned = all_data_cleaned[['chl_a'] + input_cols]
+
+    return all_data_cleaned
 
 # define constants for new bands
 def get_constants(lakeid):
-    filtered_df = all_data[all_data['lagoslakei'] == lakeid] # maybe this lake is from insitu and we know it's depth and surface area?
-    
-    SA = filtered_df['SA'].iloc[0] if not filtered_df.empty else NAN_SUBSTITUTE_CONSANT # NAN_SUBSTITUTE_CONSANT = null in our cudf random forest
-    Max_depth = filtered_df['Max.depth'].iloc[0]  if not filtered_df.empty else NAN_SUBSTITUTE_CONSANT
-    pct_dev = lagos_lookup_table['pct_dev'].iloc[0] # Lagos look up table should have this
-    pct_ag = lagos_lookup_table['pct_ag'].iloc[0] # Lagos look up table should have this
+    lagos_lookup_table_filtered = lagos_lookup_table[lagos_lookup_table['lagoslakei'] == lakeid] 
+    sa_sq_km_lookup_table_filtered = sa_sq_km_lookup_table[sa_sq_km_lookup_table['lagoslakei'] == lakeid]
 
-    return SA, Max_depth, pct_dev, pct_ag
+    SA_SQ_KM = sa_sq_km_lookup_table_filtered['SA_SQ_KM_FROM_SHAPEFILE'].iloc[0]
+    pct_dev = lagos_lookup_table_filtered['pct_dev'].iloc[0] # Lagos look up table should have this
+    pct_ag = lagos_lookup_table_filtered['pct_ag'].iloc[0] # Lagos look up table should have this
+
+    return SA_SQ_KM, pct_dev, pct_ag
 
 
-all_data, lagos_lookup_table = prepare_data(training_df_path, lagosid_path, lulc_path) # Returns insitu points merged with lagoslookup table AND lagoslookup table for all non-insitu lakes as well
-cleaned_data = prepared_cleaned_data(all_data)
-cleaned_data = cleaned_data[cleaned_data['chl_a'] < 100] # most values are 0-100, remove the crazy 4,000 outlier
+all_data_uncleaned, lagos_lookup_table, sa_sq_km_lookup_table = prepare_data(training_df_path, lagosid_path, lulc_path, lake_area_csv_path) # Returns insitu points merged with lagoslookup table AND lagoslookup table for all non-insitu lakes as well
+all_data_cleaned = prepared_cleaned_data(all_data_uncleaned)
 
-print(cleaned_data)
-all_data.to_csv("all_data.csv")
+print("Satellites: " , np.unique(all_data_cleaned["satellite"]))
+
+all_data_cleaned.to_csv("all_data_cleaned.csv")
+training_data = reduce_to_training_columns(all_data_cleaned)
+print(training_data)

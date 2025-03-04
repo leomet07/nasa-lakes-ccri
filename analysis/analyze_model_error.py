@@ -6,10 +6,12 @@ import numpy as np
 import os
 import sys
 from tqdm import tqdm
+from sklearn.model_selection import train_test_split
+from matplotlib import pyplot as plt
 
 load_dotenv()
 ROOT_DB_FILEPATH = os.getenv("ROOT_DB_FILEPATH")  # for accessing files manually
-
+USE_TEST_DATASET_FOR_ERROR_ANALYSIS = os.getenv("USE_TEST_DATASET_FOR_ERROR_ANALYSIS") == "true"
 all_spatial_predictions = map(
     vars,  # to convert record to dict
     db_utils.client.collection("spatialPredictionMaps").get_full_list(batch=100_000),
@@ -21,10 +23,15 @@ all_data = pd.read_csv(
     os.getenv("ALL_INPUT_DATA_CSV")
 )  # this later creates cleaned_data for training model
 
-all_data = all_data[all_data["chl_a"] < 100]  # filter to chl_a less than 100
+all_data_train, all_data_test = train_test_split(all_data, test_size=0.2, random_state=621) # constant hard coded from ../ml_model/model_data.py
+
+if USE_TEST_DATASET_FOR_ERROR_ANALYSIS:
+    all_data = all_data_test
 
 abs_errors = []
 squared_errors = []
+
+lakeids = []
 
 for index, row in tqdm(all_data.iterrows(), total=len(all_data)):
     lagoslakeid = row["lagoslakei"]
@@ -61,6 +68,8 @@ for index, row in tqdm(all_data.iterrows(), total=len(all_data)):
         abs_errors.append(abs_error)
         squared_errors.append(squared_error)
 
+        lakeids.append(lagoslakeid)
+
         # print(
         #     "True Value: ",
         #     true_chl_a,
@@ -82,3 +91,17 @@ mean_absolute_error = float(sum(abs_errors)) / len(abs_errors)
 root_mean_squared_error = (sum(squared_errors) / len(squared_errors)) ** 0.5
 print("MAE:", mean_absolute_error)
 print("RMSE:", root_mean_squared_error)
+
+print("# of matches: ", len(abs_errors))
+
+unique_lakeids = list(set(lakeids))
+
+print("Unique lakeids: ", len(unique_lakeids))
+
+plt.figure(figsize=(10, 6))
+plt.hist(abs_errors, 50)
+plt.ylabel("Frequency")
+plt.xlabel("Absolute Error (µg/L)")
+plt.xticks(np.arange(0, 51, 5.0))
+plt.title(f"Absolute Error with 2019-2024 August Predictions Compared to {"Testing Portion of" if USE_TEST_DATASET_FOR_ERROR_ANALYSIS else "All"} Corresponding In-Situ Data")
+plt.show()

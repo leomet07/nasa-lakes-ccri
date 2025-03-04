@@ -21,13 +21,13 @@ USE_CACHED_MODEL = os.getenv("USE_CACHED_MODEL").lower() == "true"
 CPU_MODEL_SAVE_FILE = "model_cpu.joblib"
 
 import model_data
-cleaned_data = model_data.cleaned_data
+training_data = model_data.training_data
 # cleaned_data = cleaned_data.replace(-99999.0, np.nan) # Not needed, -99999 working fine
 
-X = cleaned_data.drop(columns=['chl_a'])
-y = cleaned_data['chl_a']
+X = training_data.drop(columns=['chl_a'])
+y = training_data['chl_a']
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=621)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=model_data.RANDOM_STATE)
 print("Dataframes created and data split successfully.")
 
 def train_cpu_model():
@@ -77,6 +77,8 @@ print(f"RMSE: {rmse}")
 if GRAPH_AND_COMPARE_PERFORMANCE:
     print("mean of test: ", np.mean(y_test))
     print("mean of pred: ", np.mean(y_pred))
+    print("min of test: ", np.min(y_test))
+    print("min of pred: ", np.min(y_pred))
     # Model analysis
     plt.figure(1)
     plt.hist(y_pred, 200)
