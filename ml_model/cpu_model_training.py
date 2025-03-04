@@ -14,9 +14,10 @@ from sklearn.model_selection import train_test_split
 from matplotlib import pyplot as plt
 from scipy import stats
 import joblib
-
+import math
 
 GRAPH_AND_COMPARE_PERFORMANCE = os.getenv("GRAPH_AND_COMPARE_PERFORMANCE").lower() == "true"
+PERFORMANCE_CHART_PATH = os.getenv("PERFORMANCE_CHART_PATH") or "charts"
 USE_CACHED_MODEL = os.getenv("USE_CACHED_MODEL").lower() == "true"
 CPU_MODEL_SAVE_FILE = "model_cpu.joblib"
 
@@ -75,35 +76,30 @@ print(f"RMSE: {rmse}")
 
 
 if GRAPH_AND_COMPARE_PERFORMANCE:
+    if not os.path.exists(PERFORMANCE_CHART_PATH):
+        os.makedirs(PERFORMANCE_CHART_PATH)
     print("mean of test: ", np.mean(y_test))
     print("mean of pred: ", np.mean(y_pred))
     print("min of test: ", np.min(y_test))
     print("min of pred: ", np.min(y_pred))
-    # Model analysis
-    plt.figure(1)
-    plt.hist(y_pred, 200)
-    plt.xlabel("Predicted chl-a (ug/l)")
-    plt.ylabel("Frequency")
-    plt.title("Prediction Histogram (CPU)")
-
 
     # Plot y_pred performance: https://stackoverflow.com/questions/19064772/visualization-of-scatter-plots-with-overlapping-points-in-matplotlib
-    plt.figure(2)
+    plt.figure(1, (14,7))
     values = np.vstack([y_test, y_pred])
     kernel = stats.gaussian_kde(values, bw_method=.02)(values)
 
     plt.scatter(y_test, y_pred, s=20, c=kernel,cmap='viridis')
-    # plt.axline((0,0), (50,50), linewidth=1, color='black')
+    plt.axline((0,0), (50,50), linewidth=1, color='black')
     # plt.axis((0,50,0,50))
     plt.xscale('log')
     plt.yscale('log')
     plt.xlabel('Observed Chl-a (ug/l)')
     plt.ylabel('Predicted Chl-a (ug/l)')
-    plt.title('CPU Random Forest Regression')
-
+    plt.title("Comparing Model's Prediction on Testing In-Situ Dataset to Corresponding Measured Value")
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "scatter_plot_pred_vs_real.png"))
 
     # Feature importances plot
-    plt.figure(3)
+    plt.figure(2, (14,7))
     feature_importances = andrew_model.feature_importances_
     indices = np.argsort(feature_importances)
     features = X.columns
@@ -111,10 +107,62 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     # plt.barh(range(len(indices)), feature_importances[indices], color='b', align='center') # Sorted
     # plt.yticks(range(len(indices)), [features[i] for i in indices])
     plt.barh(features, feature_importances)
-    # plt.yticks(range(len(indices)), [features[i] for i in indices])
-
     plt.xlabel('Relative Importance')
-    plt.show()
+    # plt.yticks(range(len(indices)), [features[i] for i in indices])
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "feature_importances.png"))
+
+    plt.figure(3, (14,7))
+    # Histogram of model's performance on testing data, aka 20% of the in situ data
+    plt.hist(y_pred, 100)
+    plt.ylabel("Frequency")
+    plt.xlabel("Predicted Chl-a (µg/L)")
+    plt.title(f"Chlorophyll-a Prediction on Testing Portion of In-Situ Data")
+    plt.xticks(np.arange(0, max(y_pred), 5.0))
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_testing_part_of_insitu.png"))
+
+
+    plt.figure(4, (14,7))
+    # Histogram of model's absolute error on testing data, aka 20% of the in situ data
+    y_error = y_pred - y_test
+    plt.hist(y_error, 100)
+    plt.ylabel("Frequency")
+    plt.xlabel("Predicted Chl-a Error (µg/L)")
+    plt.title(f"Chlorophyll-a Prediction Error on Testing Portion of In-Situ Data")
+    plt.xticks(np.arange(math.floor(min(y_error)), max(y_error), 5.0))
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_error_testing_part_of_insitu.png"))
+
+
+    # Run predictions on ALL insitu data
+    all_insitu_predicted = andrew_model.predict(X.values)
+
+    plt.figure(5, (14,7))
+    # Histogram of model's performance on 100% of the in situ data
+    plt.hist(all_insitu_predicted, 100)
+    plt.ylabel("Frequency")
+    plt.xlabel("Predicted Chl-a (µg/L)")
+    plt.title(f"Chlorophyll-a Prediction on All In-Situ Data")
+    plt.xticks(np.arange(0, max(all_insitu_predicted), 5.0))
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_all_insitu.png"))
+
+    
+    plt.figure(6, (14,7))
+    # Histogram of model's absolute error on 100% of the in situ data
+    all_insitu_predicted_error = all_insitu_predicted - y.values
+    plt.hist(all_insitu_predicted_error, 100)
+    plt.ylabel("Frequency")
+    plt.xlabel("Predicted Chl-a Error (µg/L)")
+    plt.title(f"Chlorophyll-a Prediction Error on All In-Situ Data")
+    plt.xticks(np.arange(math.floor(min(all_insitu_predicted_error)), max(all_insitu_predicted_error), 5.0))
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_error_all_insitu.png"))
+
+    plt.figure(7, (14,7))
+    # Histogram of the in situ data chla
+    plt.hist(y.values, 100)
+    plt.ylabel("Frequency")
+    plt.xlabel("In Situ Chl-a (µg/L)")
+    plt.title(f"Histogram of In-Situ Chlorophyll-a")
+    plt.xticks(np.arange(0, max(y.values), 5.0))
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_insitu_chla.png"))
 
     # Show both at the same time
     plt.show()
