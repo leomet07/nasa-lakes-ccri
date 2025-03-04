@@ -81,7 +81,7 @@ def get_constants(lakeid):
     lagos_lookup_table_filtered = lagos_lookup_table[lagos_lookup_table['lagoslakei'] == lakeid] 
     sa_sq_km_lookup_table_filtered = sa_sq_km_lookup_table[sa_sq_km_lookup_table['lagoslakei'] == lakeid]
 
-    SA_SQ_KM = sa_sq_km_lookup_table_filtered['SA_SQ_KM_FROM_SHAPEFILE'].iloc[0]
+    SA_SQ_KM = sa_sq_km_lookup_table_filtered['SA_SQ_KM'].iloc[0]
     pct_dev = lagos_lookup_table_filtered['pct_dev'].iloc[0] # Lagos look up table should have this
     pct_ag = lagos_lookup_table_filtered['pct_ag'].iloc[0] # Lagos look up table should have this
 
