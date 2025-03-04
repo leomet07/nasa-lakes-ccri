@@ -71,13 +71,6 @@ def reduce_to_training_columns(all_data_cleaned):
     input_cols = ['443', '493', '560', '665','703', '740', '780', '834', '864', 'SA_SQ_KM_FROM_SHAPEFILE','pct_dev','pct_ag']
     all_data_cleaned = all_data_cleaned[['chl_a'] + input_cols]
 
-    for col in all_data_cleaned.select_dtypes(["object"]).columns:
-        all_data_cleaned[col] = all_data_cleaned[col].astype("category").cat.codes.astype(np.int32)
-
-    # cast all columns to int32
-    for col in all_data_cleaned.columns:
-        all_data_cleaned[col] = all_data_cleaned[col].astype(np.float32)  # needed for random forest
-
     return all_data_cleaned
 
 # define constants for new bands

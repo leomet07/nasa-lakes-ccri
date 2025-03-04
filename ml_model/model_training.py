@@ -23,7 +23,15 @@ USE_CACHED_MODEL = os.getenv("USE_CACHED_MODEL").lower() == "true"
 GPU_MODEL_SAVE_FILE = "model_gpu.joblib"
 
 import model_data
+
 training_data = cudf.from_pandas(model_data.training_data)
+
+for col in training_data.select_dtypes(["object"]).columns:
+    training_data[col] = training_data[col].astype("category").cat.codes.astype(np.int32)
+
+# cast all columns to int32
+for col in training_data.columns:
+    training_data[col] = training_data[col].astype(np.float32)  # float32 type needed for cuml random forest
 
 X = training_data.drop(columns=['chl_a'])
 y = training_data['chl_a']
