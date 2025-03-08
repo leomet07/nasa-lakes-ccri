@@ -138,7 +138,7 @@ def predict(input_tif : str, lakeid: int, tags, display = True):
         df = df.drop_duplicates()
         output_tif_csv = add_suffix_to_filename_at_tif_path(input_tif, "predicted") + '.csv'
         df.to_csv(output_tif_csv)
-        print("csv saved to " + output_tif_csv)
+        print("csv saved to " +  os.path.join(os.getcwd(), output_tif_csv))
 
     # print(predictions)
 
