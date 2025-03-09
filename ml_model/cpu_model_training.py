@@ -114,6 +114,8 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     feature_importances = andrew_model.feature_importances_
     indices = np.argsort(feature_importances)
     features = X.columns
+    features = features.str.replace('pct_dev', f'%dev')
+    features = features.str.replace('pct_ag', f'%ag')
     plt.title('Feature Importances', fontweight='bold')
     # plt.barh(range(len(indices)), feature_importances[indices], color='b', align='center') # Sorted
     # plt.yticks(range(len(indices)), [features[i] for i in indices])
