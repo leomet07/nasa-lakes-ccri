@@ -15,6 +15,7 @@ from matplotlib import pyplot as plt
 from scipy import stats
 import joblib
 import math
+from matplotlib.ticker import ScalarFormatter
 
 GRAPH_AND_COMPARE_PERFORMANCE = os.getenv("GRAPH_AND_COMPARE_PERFORMANCE").lower() == "true"
 PERFORMANCE_CHART_PATH = os.getenv("PERFORMANCE_CHART_PATH") or "charts"
@@ -92,12 +93,20 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.axline((0,0), (50,50), linewidth=2, color='red')
     colorbar = plt.colorbar()
     colorbar.set_label("Density", rotation=270, labelpad=15, fontweight='bold')
-    # plt.axis((0,50,0,50))
+
     plt.xscale('log')
+    plt.gca().xaxis.set_major_formatter(ScalarFormatter())
+    plt.ticklabel_format(axis='x', style='plain') # so that xticks are written in decimal
     plt.yscale('log')
+    plt.gca().yaxis.set_major_formatter(ScalarFormatter())
+    plt.ticklabel_format(axis='y', style='plain') # so that yticks are written in decimal
+
+    plt.xlim(0.1, 100) # starts at 0.1 bc this is LOG scale and 0 is invalid
+    plt.ylim(0.1, 100) # starts at 0.1 bc this is LOG scale and 0 is invalid
     plt.xlabel('Observed Chl-a (ug/l)', fontweight='bold')
     plt.ylabel('Predicted Chl-a (ug/l)', fontweight='bold')
     plt.title("Comparing Model's Prediction on Testing In-Situ Dataset to Corresponding Measured Value", fontweight='bold')
+    plt.gca().set_aspect('equal')
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "scatter_plot_pred_vs_real.png"), bbox_inches='tight')
 
     # Feature importances plot
@@ -170,6 +179,18 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.xticks(np.arange(0, 60, 5.0))
     plt.xlim((0, 60))
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_insitu_chla.png"), bbox_inches='tight')
+
+    plt.figure(8, (14,7))
+    # Histogram of the in situ data chla
+    plt.hist(y_test, 200, label="Insitu Chl-a Frequency", histtype="step")
+    plt.hist(y_pred, 200, label="Predicted Chl-a Frequency", histtype="step")
+    plt.legend()
+    plt.ylabel("Frequency", fontweight='bold')
+    plt.xlabel("In Situ Chl-a (µg/L)", fontweight='bold')
+    plt.title(f"Predicted vs Insitu (Testing Dataset)", fontweight='bold')
+    plt.xticks(np.arange(0, 60, 5.0))
+    plt.xlim((0, 60))
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "overlay_predicted_and_insitu_testing_part_of_insitu.png"), bbox_inches='tight')
 
     # Show both at the same time
     plt.show()
