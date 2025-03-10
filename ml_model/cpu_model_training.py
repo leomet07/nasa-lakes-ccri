@@ -77,6 +77,8 @@ print(f"RMSE: {rmse}")
 
 
 if GRAPH_AND_COMPARE_PERFORMANCE:
+    plt.rcParams.update({'font.size': 18})
+
     if not os.path.exists(PERFORMANCE_CHART_PATH):
         os.makedirs(PERFORMANCE_CHART_PATH)
     print("mean of test: ", np.mean(y_test))
@@ -103,8 +105,8 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
 
     plt.xlim(0.1, 100) # starts at 0.1 bc this is LOG scale and 0 is invalid
     plt.ylim(0.1, 100) # starts at 0.1 bc this is LOG scale and 0 is invalid
-    plt.xlabel('Observed Chl-a (ug/l)', fontweight='bold')
-    plt.ylabel('Predicted Chl-a (ug/l)', fontweight='bold')
+    plt.xlabel('Observed Chl-a (µg/L)', fontweight='bold')
+    plt.ylabel('Predicted Chl-a (µg/L)', fontweight='bold')
     plt.gca().set_aspect('equal')
     plt.tight_layout()
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "scatter_plot_pred_vs_real.png"), bbox_inches='tight')
