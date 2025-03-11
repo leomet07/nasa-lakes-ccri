@@ -4,8 +4,7 @@ import os
 
 load_dotenv()
 
-from sklearn.metrics import r2_score
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 import pandas as pd
 import time
 import numpy as np
@@ -72,9 +71,11 @@ print(f"Predicted! Elapsed {time_diff} seconds")
 # Calculate the Mean Squared Error and r2
 r2 = r2_score(y_test, y_pred)
 rmse = mean_squared_error(y_test, y_pred) ** 0.5
+mae = mean_absolute_error(y_test, y_pred)
+
 print(f"r2 score: {r2}")
 print(f"RMSE: {rmse}")
-
+print(f"MAE: {mae}")
 
 if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.rcParams.update({'font.size': 18})

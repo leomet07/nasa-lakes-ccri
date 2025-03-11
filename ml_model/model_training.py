@@ -10,8 +10,7 @@ import cudf
 from cuml.ensemble import RandomForestRegressor
 from dask_ml.model_selection import RandomizedSearchCV
 from cuml.model_selection import train_test_split
-from sklearn.metrics import r2_score
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 import pandas as pd
 import time
 import numpy as np
@@ -136,8 +135,11 @@ print(f"Predicted! Elapsed {time_diff} seconds")
 # Calculate the Mean Squared Error and r2
 r2 = r2_score(y_test.to_numpy(), y_pred.to_numpy())
 rmse = mean_squared_error(y_test.to_numpy(), y_pred.to_numpy()) ** 0.5
+mae = mean_absolute_error(y_test.to_numpy(), y_pred.to_numpy())
+
 print(f"r2 score: {r2}")
 print(f"RMSE: {rmse}")
+print(f"MAE: {mae}")
 
 
 if GRAPH_AND_COMPARE_PERFORMANCE:
