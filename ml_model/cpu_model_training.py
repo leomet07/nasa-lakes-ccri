@@ -121,7 +121,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     features = features.str.replace('pct_ag', f'%ag')
     # plt.barh(range(len(indices)), feature_importances[indices], color='b', align='center') # Sorted
     # plt.yticks(range(len(indices)), [features[i] for i in indices])
-    plt.barh(features, feature_importances)
+    plt.barh(features, feature_importances, color="skyblue", ec="black")
     plt.xlabel('Relative Importance', fontweight='bold')
     # plt.yticks(range(len(indices)), [features[i] for i in indices])
     plt.tight_layout()
@@ -129,7 +129,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
 
     plt.figure(f"Chlorophyll-a Prediction on Testing Portion of In-Situ Data", (14,7))
     # Histogram of model's performance on testing data, aka 20% of the in situ data
-    plt.hist(y_pred, 100)
+    plt.hist(y_pred, 100, color="skyblue", ec="black")
     plt.ylabel("Frequency", fontweight='bold')
     plt.xlabel("Predicted Chl-a (µg/L)", fontweight='bold')
     plt.xticks(np.arange(0, 60, 5.0))
@@ -141,7 +141,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.figure(f"Chlorophyll-a Prediction Error on Testing Portion of In-Situ Data", (14,7))
     # Histogram of model's absolute error on testing data, aka 20% of the in situ data
     y_error = y_pred - y_test
-    plt.hist(y_error, 100)
+    plt.hist(y_error, 100, color="skyblue", ec="black")
     plt.ylabel("Frequency", fontweight='bold')
     plt.xlabel("Predicted Chl-a Error (µg/L)", fontweight='bold')
     plt.xticks(np.arange(-60, 60, 5.0))
@@ -155,7 +155,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
 
     plt.figure(f"Chlorophyll-a Prediction on All In-Situ Data", (14,7))
     # Histogram of model's performance on 100% of the in situ data
-    plt.hist(all_insitu_predicted, 100)
+    plt.hist(all_insitu_predicted, 100, color="skyblue", ec="black")
     plt.ylabel("Frequency", fontweight='bold')
     plt.xlabel("Predicted Chl-a (µg/L)", fontweight='bold')
     plt.xticks(np.arange(0, 60, 5.0))
@@ -167,7 +167,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.figure(f"Chlorophyll-a Prediction Error on All In-Situ Data", (14,7))
     # Histogram of model's absolute error on 100% of the in situ data
     all_insitu_predicted_error = all_insitu_predicted - y.values
-    plt.hist(all_insitu_predicted_error, 100)
+    plt.hist(all_insitu_predicted_error, 100, color="skyblue", ec="black")
     plt.ylabel("Frequency", fontweight='bold')
     plt.xlabel("Predicted Chl-a Error (µg/L)", fontweight='bold')
     plt.xticks(np.arange(-60, 60, 5.0))
@@ -177,7 +177,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
 
     plt.figure(f"Histogram of In-Situ Chlorophyll-a", (14,7))
     # Histogram of the in situ data chla
-    plt.hist(y.values, 100)
+    plt.hist(y.values, 100, color="skyblue", ec="black")
     plt.ylabel("Frequency", fontweight='bold')
     plt.xlabel("In Situ Chl-a (µg/L)", fontweight='bold')
     plt.xticks(np.arange(0, 60, 5.0))
