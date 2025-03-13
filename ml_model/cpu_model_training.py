@@ -187,8 +187,8 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
 
     plt.figure(f"Predicted vs Insitu (Testing Dataset)", (14,7))
     # Histogram of the in situ data chla
-    plt.hist(y_test, 200, label="Insitu Chl-a Frequency", histtype="step")
-    plt.hist(y_pred, 200, label="Predicted Chl-a Frequency", histtype="step")
+    plt.hist(y_test, 200, label="Insitu Chl-a Frequency", histtype="stepfilled", alpha=0.6)
+    plt.hist(y_pred, 200, label="Predicted Chl-a Frequency", histtype="stepfilled", alpha=0.6)
     plt.legend()
     plt.ylabel("Frequency", fontweight='bold')
     plt.xlabel("In Situ Chl-a (µg/L)", fontweight='bold')
