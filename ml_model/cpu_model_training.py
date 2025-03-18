@@ -87,6 +87,21 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     print("min of test: ", np.min(y_test))
     print("min of pred: ", np.min(y_pred))
 
+
+    plt.figure("Number of Chl-a Samples Per Lake", (14,7))
+
+    insitu_lakeids = np.unique(model_data.all_data_cleaned["lagoslakei"])
+    num_samples_in_each_lake = [len(model_data.all_data_cleaned[model_data.all_data_cleaned["lagoslakei"] == lakeid]) for lakeid in insitu_lakeids]
+    
+    plt.hist(num_samples_in_each_lake, 75, color="skyblue", ec="black")
+    plt.xlim(0, 200) # 0 to 200 samples per lake
+    plt.xticks(np.arange(0, 200, 10))
+    plt.ylabel("Frequency", fontweight='bold')
+    plt.xlabel("Number of Samples per Lake", fontweight='bold')
+    plt.tight_layout()
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "number_of_samples_per_lake.png"), bbox_inches='tight')
+    
+
     # Plot y_pred performance: https://stackoverflow.com/questions/19064772/visualization-of-scatter-plots-with-overlapping-points-in-matplotlib
     plt.figure("Comparing Model's Prediction on Testing In-Situ Dataset to Corresponding Measured Value", (14,7))
     values = np.vstack([y_test, y_pred])
