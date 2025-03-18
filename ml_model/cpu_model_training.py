@@ -201,7 +201,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_insitu_chla.png"), bbox_inches='tight')
 
     plt.figure(f"Predicted vs Insitu (Testing Dataset)", (14,7))
-    # Histogram of the in situ data chla
+    # Overlayed Histogram of the in situ truths vs the predicted values
     plt.hist(y_test, 200, label="Insitu Chl-a Frequency", histtype="stepfilled", alpha=0.6)
     plt.hist(y_pred, 200, label="Predicted Chl-a Frequency", histtype="stepfilled", alpha=0.6)
     plt.legend()
@@ -210,6 +210,42 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.xticks(np.arange(0, 60, 5.0))
     plt.xlim((0, 60))
     plt.tight_layout()
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "overlay_predicted_and_insitu_testing_part_of_insitu_full.png"), bbox_inches='tight')
+   
+    # Same thing as above, but split x_axis
+    fig, (ax, ax2) = plt.subplots(1, 2, sharey=True, facecolor='w', figsize=(14,7))
+    fig.supylabel("Frequency", fontweight='bold')
+    fig.supxlabel("In Situ Chl-a (µg/L)", fontweight='bold')
+    fig.canvas.manager.set_window_title("Split X-axis, Predicted vs Insitu (Testing Dataset)")
+    plt.xticks(np.arange(0, 70, 5))
+    plt.tight_layout()
+
+    ax.hist(y_test, 200, label="Insitu Chl-a Frequency", histtype="stepfilled", alpha=0.6)
+    ax.hist(y_pred, 200, label="Predicted Chl-a Frequency", histtype="stepfilled", alpha=0.6)
+    ax2.hist(y_test, 200, label="Insitu Chl-a Frequency", histtype="stepfilled", alpha=0.6)
+    ax2.hist(y_pred, 200, label="Predicted Chl-a Frequency", histtype="stepfilled", alpha=0.6)
+
+    ax2.legend()
+    ax.set_xlim(0, 25)
+    ax2.set_xlim(55, 70)
+    # hide the spines between ax and ax2
+    ax.spines['right'].set_visible(False)
+    ax2.spines['left'].set_visible(False)
+    ax.yaxis.tick_left()
+    # ax.tick_params(labelright='off')
+    ax2.yaxis.tick_right()
+
+    d = .015  # how big to make the diagonal lines in axes coordinates
+    # arguments to pass plot, just so we don't keep repeating them
+    kwargs = dict(transform=ax.transAxes, color='k', clip_on=False)
+    ax.plot((1-d, 1+d), (-d, +d), **kwargs)
+    ax.plot((1-d, 1+d), (1-d, 1+d), **kwargs)
+
+    kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
+    ax2.plot((-d, +d), (1-d, 1+d), **kwargs)
+    ax2.plot((-d, +d), (-d, +d), **kwargs)
+
+
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "overlay_predicted_and_insitu_testing_part_of_insitu.png"), bbox_inches='tight')
 
     # Show both at the same time
