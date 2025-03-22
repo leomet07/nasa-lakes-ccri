@@ -88,15 +88,15 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     print("min of pred: ", np.min(y_pred))
 
 
-    plt.figure("Number of Chl-a Samples Per Lake", (14,7))
+    plt.figure("Number of Chl-a Samples Per Lake", (7,7))
 
     insitu_lakeids = np.unique(model_data.all_data_cleaned["lagoslakei"])
     num_samples_in_each_lake = [len(model_data.all_data_cleaned[model_data.all_data_cleaned["lagoslakei"] == lakeid]) for lakeid in insitu_lakeids]
     
     plt.hist(num_samples_in_each_lake, 75, color="skyblue", ec="black")
     plt.xlim(0, 200) # 0 to 200 samples per lake
-    plt.xticks(np.arange(0, 200, 10))
-    plt.ylabel("Frequency", fontweight='bold')
+    plt.xticks(np.arange(0, 200, 20))
+    # plt.ylabel("Frequency", fontweight='bold') # label not needed becauase in the paper it is next to a chart that alr has this ylabel
     plt.xlabel("Number of Samples per Lake", fontweight='bold')
     plt.tight_layout()
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "number_of_samples_per_lake.png"), bbox_inches='tight')
@@ -132,8 +132,9 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     feature_importances = andrew_model.feature_importances_
     indices = np.argsort(feature_importances)
     features = X.columns
-    features = features.str.replace('pct_dev', f'%dev')
-    features = features.str.replace('pct_ag', f'%ag')
+    features = features.str.replace('pct_dev', f'Developed')
+    features = features.str.replace('pct_ag', f'Agriculture')
+    features = features.str.replace('SA_SQ_KM', f'Surface area')
     # plt.barh(range(len(indices)), feature_importances[indices], color='b', align='center') # Sorted
     # plt.yticks(range(len(indices)), [features[i] for i in indices])
     plt.barh(features, feature_importances, color="skyblue", ec="black")
@@ -190,13 +191,15 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.tight_layout()
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_error_all_insitu.png"), bbox_inches='tight')
 
-    plt.figure(f"Histogram of In-Situ Chlorophyll-a", (14,7))
+    plt.figure(f"Histogram of In-Situ Chlorophyll-a", (7,7))
+    insitu_chla_median = np.median(y.values)
     # Histogram of the in situ data chla
     plt.hist(y.values, 100, color="skyblue", ec="black")
     plt.ylabel("Frequency", fontweight='bold')
     plt.xlabel("In Situ Chl-a (µg/L)", fontweight='bold')
     plt.xticks(np.arange(0, 60, 5.0))
     plt.xlim((0, 60))
+    plt.axvline(x=insitu_chla_median, color='black', linestyle='--', linewidth=1.5)
     plt.tight_layout()
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_insitu_chla.png"), bbox_inches='tight')
 

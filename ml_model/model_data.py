@@ -93,6 +93,7 @@ all_data_uncleaned, lagos_lookup_table, sa_sq_km_lookup_table = prepare_data(tra
 all_data_cleaned = prepared_cleaned_data(all_data_uncleaned)
 
 print("Satellites (Sentinel 2A/B: 1/2, Landsat 8/9: LC08/LC09): " , np.unique(all_data_cleaned["satellite"]))
+# print("# of insitu lakes: ", len(np.unique(all_data_cleaned["lagoslakei"] )))
 
 all_data_cleaned.to_csv("all_data_cleaned.csv")
 training_data = reduce_to_training_columns(all_data_cleaned)
