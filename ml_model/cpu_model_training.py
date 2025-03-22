@@ -8,7 +8,7 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 import pandas as pd
 import time
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 from sklearn.model_selection import train_test_split
 from matplotlib import pyplot as plt
 from scipy import stats
@@ -33,15 +33,10 @@ print("Dataframes created and data split successfully.")
 
 def train_cpu_model():
     andrew_params = {
-        'max_depth': 30, # Andrew params
-        'max_features': 'sqrt',
-        'min_samples_leaf' :1,
-        'min_samples_split' :2,
-        'n_estimators':1200,
     }
 
     print("Known fit starting...")
-    model = RandomForestRegressor(**andrew_params) # Instead of searching for params, use preconfigured params andrew found
+    model = ExtraTreesRegressor(**andrew_params) # Instead of searching for params, use preconfigured params andrew found
     time_start = time.time()
     model.fit(X_train.values, y_train)  # Fit model (which uses preconfigured params)
     time_end = time.time()
