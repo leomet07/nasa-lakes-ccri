@@ -20,7 +20,7 @@ from matplotlib.ticker import ScalarFormatter
 
 DO_HYPERPARAM_SEARCH = os.getenv("DO_HYPERPARAM_SEARCH").lower() == "true"
 GRAPH_AND_COMPARE_PERFORMANCE = os.getenv("GRAPH_AND_COMPARE_PERFORMANCE").lower() == "true"
-PERFORMANCE_CHART_PATH = os.getenv("PERFORMANCE_CHART_PATH") or "charts"
+PERFORMANCE_CHART_PATH = os.getenv("PERFORMANCE_CHART_PATH") or "charts_etr"
 USE_CACHED_MODEL = os.getenv("USE_CACHED_MODEL").lower() == "true"
 CPU_MODEL_SAVE_FILE = "model_cpu.joblib"
 
