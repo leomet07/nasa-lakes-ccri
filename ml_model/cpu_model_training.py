@@ -12,6 +12,7 @@ from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
 from sklearn.model_selection import train_test_split
 from matplotlib import pyplot as plt
+import matplotlib.font_manager as font_manager
 from scipy import stats
 import joblib
 import math
@@ -274,7 +275,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "overlay_predicted_and_insitu_testing_part_of_insitu_full.png"), bbox_inches='tight')
    
     # Same thing as above, but split x_axis
-    fig, (ax, ax2) = plt.subplots(1, 2, sharey=True, facecolor='w', figsize=(14,7))
+    fig, (ax, ax2) = plt.subplots(1, 2, sharey=True, facecolor='w', figsize=(14,7), width_ratios=[5, 2])
     fig.supylabel("Frequency", fontweight='bold')
     fig.supxlabel("In Situ Chl-a (µg/L)", fontweight='bold')
     fig.canvas.manager.set_window_title("Split X-axis, Predicted vs Insitu (Testing Dataset)")
@@ -286,9 +287,10 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     ax2.hist(y_test, 200, label="Insitu Chl-a Frequency", histtype="stepfilled", alpha=0.6)
     ax2.hist(y_pred, 200, label="Predicted Chl-a Frequency", histtype="stepfilled", alpha=0.6)
 
-    ax2.legend()
+    font = font_manager.FontProperties(weight='bold', style='normal')
+    ax2.legend(prop=font) # make this bold text
     ax.set_xlim(0, 25)
-    ax2.set_xlim(55, 70)
+    ax2.set_xlim(60, 70)
     # hide the spines between ax and ax2
     ax.spines['right'].set_visible(False)
     ax2.spines['left'].set_visible(False)
@@ -299,11 +301,11 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     d = .015  # how big to make the diagonal lines in axes coordinates
     # arguments to pass plot, just so we don't keep repeating them
     kwargs = dict(transform=ax.transAxes, color='k', clip_on=False)
-    ax.plot((1-d, 1+d), (-d, +d), **kwargs)
+    ax.plot((1-d, 1+d), (-d, +d), **kwargs) 
     ax.plot((1-d, 1+d), (1-d, 1+d), **kwargs)
 
     kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
-    ax2.plot((-d, +d), (1-d, 1+d), **kwargs)
+    ax2.plot((-d, +d), (1-d, 1+d), **kwargs) # fix ratio of ax 2 line
     ax2.plot((-d, +d), (-d, +d), **kwargs)
 
 
