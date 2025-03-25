@@ -8,22 +8,28 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 import pandas as pd
 import time
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
+from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
 from sklearn.model_selection import train_test_split
 from matplotlib import pyplot as plt
+import matplotlib.font_manager as font_manager
 from scipy import stats
 import joblib
 import math
 from matplotlib.ticker import ScalarFormatter
 
+
+DO_HYPERPARAM_SEARCH = os.getenv("DO_HYPERPARAM_SEARCH").lower() == "true"
 GRAPH_AND_COMPARE_PERFORMANCE = os.getenv("GRAPH_AND_COMPARE_PERFORMANCE").lower() == "true"
-PERFORMANCE_CHART_PATH = os.getenv("PERFORMANCE_CHART_PATH") or "charts"
+PERFORMANCE_CHART_PATH = os.getenv("PERFORMANCE_CHART_PATH") or "charts_etr"
 USE_CACHED_MODEL = os.getenv("USE_CACHED_MODEL").lower() == "true"
 CPU_MODEL_SAVE_FILE = "model_cpu.joblib"
 
 import model_data
 training_data = model_data.training_data
-# cleaned_data = cleaned_data.replace(-99999.0, np.nan) # Not needed, -99999 working fine
+# training_data = training_data.replace(-99999.0, np.nan) # Not needed, -99999 working fine
+# training_data = training_data.replace(-99999.0, -1.0) # Not needed, -99999 working fine
+# training_data = training_data.replace(-99999.0, -9999999.0) # Not needed, -99999 working fine
 
 X = training_data.drop(columns=['chl_a'])
 y = training_data['chl_a']
@@ -31,22 +37,74 @@ y = training_data['chl_a']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=model_data.RANDOM_STATE)
 print("Dataframes created and data split successfully.")
 
-def train_cpu_model():
-    andrew_params = {
-        'max_depth': 30, # Andrew params
-        'max_features': 'sqrt',
-        'min_samples_leaf' :1,
-        'min_samples_split' :2,
-        'n_estimators':1200,
+def hyper_param_search_and_train_model():
+    # n_estimators = [int(x) for x in np.linspace(start = 10, stop = 2000, num = 10)]
+    n_estimators = [10, 20, 50, 100, 200, 500, 1000, 1200, 1500, 1800, 1900, 2000]
+    # Number of features to consider at every split
+    max_features =  ['log2', 'sqrt', 1.0] # all in the following array are fast but log2 is fastest ['log2', 'sqrt', 1.0]
+    # Maximum number of levels in tree
+    max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
+    # max_depth.append(None)
+    # Minimum number of samples required to split a node
+    min_samples_split = list(range(1,4))
+    # Minimum number of samples required at each leaf node
+    min_samples_leaf = list(range(1,4))
+
+    # Define the parameter grid for RandomizedSearchCV
+    param_grid = {
+        'n_estimators': n_estimators,
+        # 'max_depth': max_depth,
+        'min_samples_split': min_samples_split,
+        'min_samples_leaf': min_samples_leaf,
+        # 'max_features': max_features,
     }
 
-    print("Known fit starting...")
-    model = RandomForestRegressor(**andrew_params) # Instead of searching for params, use preconfigured params andrew found
+
+    # Initialize the Random Forest model
+    etr_model = ExtraTreesRegressor() #2 for mse
+
     time_start = time.time()
-    model.fit(X_train.values, y_train)  # Fit model (which uses preconfigured params)
+    print("Searching for best hyperparamaters using a random search and checking by fitting model...")
+
+    # Initialize the RandomizedSearchCV with 5-fold cross-validation
+    random_search = GridSearchCV( # GridSearchCV is more exhuastive
+        etr_model,
+        param_grid,
+        cv=5,
+        # scoring='r2', 
+        scoring='neg_mean_absolute_error', # neg_mean_absolute_error = MAE
+        n_jobs=-1
+    )
+
+    # Fit the RandomizedSearchCV to find the best hyperparameters (by randomly trying combos within param grid and fitting and testing accordingly)
+    random_search.fit(X_train.to_numpy(), y_train.to_numpy())
     time_end = time.time()
     time_diff = time_end - time_start
-    print(f"Known fit finished, elapsed {time_diff} seconds")
+    print(f"Random search & Fit finished, elapsed {time_diff} seconds")
+
+    # Get the best parameters
+    best_params = random_search.best_params_
+    best_model = random_search.best_estimator_
+    return best_params, best_model
+   
+def train_cpu_model():
+    if DO_HYPERPARAM_SEARCH:
+        best_params, model = hyper_param_search_and_train_model()
+        print(f"Best Parameters: {best_params}")
+    else:
+        andrew_params = {
+            'min_samples_leaf' : 1,
+            'min_samples_split' : 3,
+            'n_estimators' : 1800
+        }
+
+        print("Known fit starting...")
+        model = ExtraTreesRegressor(**andrew_params) # Instead of searching for params, use preconfigured params andrew found
+        time_start = time.time()
+        model.fit(X_train.values, y_train)  # Fit model (which uses preconfigured params)
+        time_end = time.time()
+        time_diff = time_end - time_start
+        print(f"Known fit finished, elapsed {time_diff} seconds")
 
     joblib.dump(model, CPU_MODEL_SAVE_FILE)
     return model
@@ -217,7 +275,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "overlay_predicted_and_insitu_testing_part_of_insitu_full.png"), bbox_inches='tight')
    
     # Same thing as above, but split x_axis
-    fig, (ax, ax2) = plt.subplots(1, 2, sharey=True, facecolor='w', figsize=(14,7))
+    fig, (ax, ax2) = plt.subplots(1, 2, sharey=True, facecolor='w', figsize=(14,7), width_ratios=[5, 2])
     fig.supylabel("Frequency", fontweight='bold')
     fig.supxlabel("In Situ Chl-a (µg/L)", fontweight='bold')
     fig.canvas.manager.set_window_title("Split X-axis, Predicted vs Insitu (Testing Dataset)")
@@ -229,9 +287,10 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     ax2.hist(y_test, 200, label="Insitu Chl-a Frequency", histtype="stepfilled", alpha=0.6)
     ax2.hist(y_pred, 200, label="Predicted Chl-a Frequency", histtype="stepfilled", alpha=0.6)
 
-    ax2.legend()
+    font = font_manager.FontProperties(weight='bold', style='normal')
+    ax2.legend(prop=font) # make this bold text
     ax.set_xlim(0, 25)
-    ax2.set_xlim(55, 70)
+    ax2.set_xlim(60, 70)
     # hide the spines between ax and ax2
     ax.spines['right'].set_visible(False)
     ax2.spines['left'].set_visible(False)
@@ -242,11 +301,11 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     d = .015  # how big to make the diagonal lines in axes coordinates
     # arguments to pass plot, just so we don't keep repeating them
     kwargs = dict(transform=ax.transAxes, color='k', clip_on=False)
-    ax.plot((1-d, 1+d), (-d, +d), **kwargs)
+    ax.plot((1-d, 1+d), (-d, +d), **kwargs) 
     ax.plot((1-d, 1+d), (1-d, 1+d), **kwargs)
 
     kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
-    ax2.plot((-d, +d), (1-d, 1+d), **kwargs)
+    ax2.plot((-d, +d), (1-d, 1+d), **kwargs) # fix ratio of ax 2 line
     ax2.plot((-d, +d), (-d, +d), **kwargs)
 
 
