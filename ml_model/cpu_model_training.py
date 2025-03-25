@@ -138,6 +138,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     # plt.barh(range(len(indices)), feature_importances[indices], color='b', align='center') # Sorted
     # plt.yticks(range(len(indices)), [features[i] for i in indices])
     plt.barh(features, feature_importances, color="skyblue", ec="black")
+    plt.xlim(0, 0.3)
     plt.xlabel('Relative Importance', fontweight='bold')
     # plt.yticks(range(len(indices)), [features[i] for i in indices])
     plt.tight_layout()
