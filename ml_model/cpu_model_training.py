@@ -12,6 +12,7 @@ from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
 from sklearn.model_selection import train_test_split
 from matplotlib import pyplot as plt
+from brokenaxes import brokenaxes
 import matplotlib.font_manager as font_manager
 from scipy import stats
 import joblib
@@ -186,7 +187,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "scatter_plot_pred_vs_real.png"), bbox_inches='tight')
 
     # Feature importances plot
-    plt.figure('Feature Importances', (14,7))
+    plt.figure('Feature Importances', (9,7))
     feature_importances = andrew_model.feature_importances_
     indices = np.argsort(feature_importances)
     features = X.columns
@@ -275,41 +276,24 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "overlay_predicted_and_insitu_testing_part_of_insitu_full.png"), bbox_inches='tight')
    
     # Same thing as above, but split x_axis
-    fig, (ax, ax2) = plt.subplots(1, 2, sharey=True, facecolor='w', figsize=(14,7), width_ratios=[5, 2])
-    fig.supylabel("Frequency", fontweight='bold')
-    fig.supxlabel("In Situ Chl-a (µg/L)", fontweight='bold')
-    fig.canvas.manager.set_window_title("Split X-axis, Predicted vs Insitu (Testing Dataset)")
-    plt.xticks(np.arange(0, 70, 5))
-    plt.tight_layout()
+    fig = plt.figure("Split X-axis, Predicted vs Insitu (Testing Dataset)", figsize=(14,7))
+    bax = brokenaxes(xlims=((0, 25), (60, 70)), )
+    # plt.tight_layout()
+    bax.set_ylabel("Frequency", fontweight='bold', labelpad=45)
+    bax.set_xlabel("In Situ Chl-a (µg/L)", fontweight='bold', labelpad=45)
 
-    ax.hist(y_test, 200, label="Insitu Chl-a Frequency", histtype="stepfilled", alpha=0.6)
-    ax.hist(y_pred, 200, label="Predicted Chl-a Frequency", histtype="stepfilled", alpha=0.6)
-    ax2.hist(y_test, 200, label="Insitu Chl-a Frequency", histtype="stepfilled", alpha=0.6)
-    ax2.hist(y_pred, 200, label="Predicted Chl-a Frequency", histtype="stepfilled", alpha=0.6)
+    bax.hist(y_test, 200, label="Insitu Chl-a Frequency", histtype="stepfilled", alpha=0.6)
+    bax.hist(y_pred, 200, label="Predicted Chl-a Frequency", histtype="stepfilled", alpha=0.6)
 
     font = font_manager.FontProperties(weight='bold', style='normal')
-    ax2.legend(prop=font) # make this bold text
-    ax.set_xlim(0, 25)
-    ax2.set_xlim(60, 70)
-    # hide the spines between ax and ax2
-    ax.spines['right'].set_visible(False)
-    ax2.spines['left'].set_visible(False)
-    ax.yaxis.tick_left()
-    # ax.tick_params(labelright='off')
-    ax2.yaxis.tick_right()
+    bax.legend(prop=font) # make this bold text
 
-    d = .015  # how big to make the diagonal lines in axes coordinates
-    # arguments to pass plot, just so we don't keep repeating them
-    kwargs = dict(transform=ax.transAxes, color='k', clip_on=False)
-    ax.plot((1-d, 1+d), (-d, +d), **kwargs) 
-    ax.plot((1-d, 1+d), (1-d, 1+d), **kwargs)
+    [x.set_visible(True) for x in bax.spines["top"]]
+    [x.set_visible(True) for x in bax.spines["right"]]
 
-    kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
-    ax2.plot((-d, +d), (1-d, 1+d), **kwargs) # fix ratio of ax 2 line
-    ax2.plot((-d, +d), (-d, +d), **kwargs)
 
 
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "overlay_predicted_and_insitu_testing_part_of_insitu.png"), bbox_inches='tight')
 
-    # Show both at the same time
+    # Show all plots at the same time
     plt.show()
