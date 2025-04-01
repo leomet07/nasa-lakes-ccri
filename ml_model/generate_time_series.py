@@ -12,44 +12,65 @@ from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import train_test_split
 
 if IS_CPU_MODE:
     import cpu_model_training as model_training
 else:
     import model_training
 
-out_path = "timeseries"
+mode = "testing"
+out_path = "timeseries_" + mode
 if not os.path.exists(out_path):
     os.makedirs(out_path)
-
 
 andrew_model = model_training.andrew_model
 
 all_insitu_predicted = andrew_model.predict(model_training.X.values)
 
+results_df = pd.DataFrame(
+    columns=[
+        "lagoslakei",
+        "date",
+        "site",
+        "observed_chla",
+        "predicted_chla",
+    ]
+)
+
+all_data = model_data.all_data_cleaned
+all_predictions = all_insitu_predicted
+
+# Use split all data cleaned
+if mode.lower() == "testing":
+    all_data_train, all_data_test = train_test_split(
+        all_data, test_size=0.2, random_state=621
+    )  # constant hard coded from ./ml_model/model_data.py
+    all_data = all_data_test
+    all_predictions = model_training.y_pred
+
 print(
-    f"All data len: {len(model_data.all_data_cleaned)} | Model training X len: {len(model_training.X)} | All insitu predicted: {len(all_insitu_predicted)}<- Should be the same"
+    f"All data len: {len(all_data)} | All insitu predicted: {len(all_predictions)}<- Should be the same"
 )  # should be the same
 
 
-results_df = pd.DataFrame(columns=["lagoslakei", "date", "site", "observed_chla", "predicted_chla",])
-for index in tqdm(range(len(model_data.all_data_cleaned))):
-    row = model_data.all_data_cleaned.iloc[index]
+for index in tqdm(range(len(all_data))):
+    row = all_data.iloc[index]
 
     results_df.loc[len(results_df)] = [
         row["lagoslakei"],
-        row["sample_date"], # actual sample data of the water
-        row["site"], # lake name
-        row["chl_a"], # observed
-        all_insitu_predicted[index], # predicted
+        row["sample_date"],  # actual sample data of the water
+        row["site"],  # lake name
+        row["chl_a"],  # observed
+        all_predictions[index],  # predicted
     ]
 
 results_df["date"] = pd.to_datetime(results_df["date"])
 
 # Credit to Erin Foley for orignally making this time series plot function
-for lakeid in tqdm(np.unique(model_data.all_data_cleaned["lagoslakei"])):
-    df = results_df[results_df["lagoslakei"] == lakeid] # matching row to this lakeid
-    lake_name = df.iloc[0]["site"] # once lakeid filtered, just get lake name
+for lakeid in tqdm(np.unique(all_data["lagoslakei"])):
+    df = results_df[results_df["lagoslakei"] == lakeid]  # matching row to this lakeid
+    lake_name = df.iloc[0]["site"]  # once lakeid filtered, just get lake name
 
     # plot params
     plt.figure(figsize=(14, 8))
@@ -79,4 +100,3 @@ for lakeid in tqdm(np.unique(model_data.all_data_cleaned["lagoslakei"])):
 
     plt.savefig(file_path)
     plt.close()
-
