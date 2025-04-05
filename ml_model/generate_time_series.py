@@ -20,7 +20,7 @@ else:
     import model_training
 
 mode = "testing"
-out_path = "timeseries_" + mode
+out_path = os.path.join("timeseries", "timeseries_" + mode)
 if not os.path.exists(out_path):
     os.makedirs(out_path)
 
