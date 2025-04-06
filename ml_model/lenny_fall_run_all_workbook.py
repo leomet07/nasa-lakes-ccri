@@ -101,16 +101,15 @@ def modify_tif(input_tif : str, SA_SQ_KM_FROM_SHAPEFILE_constant : float, pct_de
 
         bands_to_fill = 9 - 5 # Landsat has 5, not 9 bands
         for i in range(raster_data.shape[0] + 1, raster_data.shape[0] + 1 + bands_to_fill):
-            print("Writing null band...")
+            # print(f"Writing null band... at ({i})")
             null_band = np.full_like(raster_data[0], model_data.NAN_SUBSTITUTE_CONSANT, dtype=raster_data.dtype)
             dst.write(null_band, indexes=i)
 
 
         # # write additional bands
-        dst.write(SA_SQ_KM_band, indexes=raster_data.shape[0] + 1)
-        dst.write(pct_dev_band, indexes=raster_data.shape[0] + 2)
-        dst.write(pct_ag_band, indexes=raster_data.shape[0] + 3)
-        
+        dst.write(SA_SQ_KM_band, indexes=raster_data.shape[0] + bands_to_fill + 1)
+        dst.write(pct_dev_band, indexes=raster_data.shape[0] + bands_to_fill + 2)
+        dst.write(pct_ag_band, indexes=raster_data.shape[0] + bands_to_fill + 3)
 
         dst.transform = src.transform
         dst.crs = src.crs
@@ -267,6 +266,7 @@ for path_tif in tqdm(paths):
         # print(f"Constants based on id({id}): ", SA_SQ_KM_constant, pct_dev_constant, pct_ag_constant)
 
         modified_path_tif = modify_tif(path_tif, SA_SQ_KM_constant, pct_dev_constant, pct_ag_constant)
+        # print("Modified tif: ", os.path.join(os.getcwd(),modified_path_tif))
 
         output_tif, predictions_loop = predict(path_tif, id, tags, display = VISUALIZE_PREDICTIONS)
 
