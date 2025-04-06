@@ -25,3 +25,5 @@ venv/
 .env
 
 *.status.txt
+
+*.bak

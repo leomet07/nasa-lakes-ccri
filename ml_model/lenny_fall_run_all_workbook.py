@@ -143,7 +143,7 @@ def predict(input_tif : str, lakeid: int, tags, display = True):
         df = df.drop_duplicates()
         output_tif_csv = add_suffix_to_filename_at_tif_path(input_tif, "predicted") + '.csv'
         df.to_csv(output_tif_csv)
-        print("csv saved to " + output_tif_csv)
+        print("csv saved to " +  os.path.join(os.getcwd(), output_tif_csv))
 
     # print(predictions)
 
@@ -179,15 +179,13 @@ def predict(input_tif : str, lakeid: int, tags, display = True):
 
 
 def save_png(input_tif, out_folder, predictions_raster, date, scale, display=True):
-    first_pixel_value = predictions_raster[0, 0] # should be nan as input images have "padding" of -inf which we later replace with nan in the output
-    masked_raster = np.where(predictions_raster == first_pixel_value, np.nan, predictions_raster)
-
+    # Masking of NaNs already happens in predict function, so no need to mask here
     min_value = 0
     max_value = 60
     increment = 5
 
     fig = plt.figure(figsize=(10, 8))
-    plt.imshow(masked_raster, cmap='viridis', interpolation='none', vmin=min_value, vmax=max_value)
+    plt.imshow(predictions_raster, cmap='viridis', interpolation='none', vmin=min_value, vmax=max_value)
     plt.axis('off')
     stem = Path(input_tif).stem
 
