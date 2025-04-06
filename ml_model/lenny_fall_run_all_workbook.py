@@ -1,11 +1,11 @@
 # Setup dotenv
 from dotenv import load_dotenv
 import os
+import sys
 
 load_dotenv()
 
-from pocketbase import PocketBase  # Client also works the same
-from pocketbase.client import FileUpload
+from pymongo import MongoClient
 import numpy as np
 import pandas as pd
 import rasterio
@@ -36,10 +36,12 @@ andrew_model = model_training.andrew_model
 print("Finished calling model training module!\n")
 
 if IS_IN_PRODUCTION_MODE:
-    client = PocketBase(os.getenv("PUBLIC_POCKETBASE_URL"))
-    admin_data = client.admins.auth_with_password(os.getenv("POCKETBASE_ADMIN_EMAIL"), os.getenv("POCKETBASE_ADMIN_PASSWORD"))
+    mongo_client = MongoClient(os.getenv("MONGO_CONNECTION_URI"))
+    mongo_prod_db = mongo_client["prod"]
+    mongo_lakes_collection = mongo_prod_db.lakes
+    mongo_spatial_predictions_collection = mongo_prod_db.spatial_predictions
 
-    all_lakes = client.collection("lakes").get_full_list(100_000, {"requestKey" : None})
+    all_lakes = list(mongo_lakes_collection.find({}))
 
 session_uuid = str(uuid.uuid4())
 print("Current session id: ", session_uuid)
@@ -205,18 +207,18 @@ def save_png(input_tif, out_folder, predictions_raster, date, scale, display=Tru
 def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path : str, datestr : str, corners : list, scale : int):
     # Step 1: Find Lakeid
 
-    filtered_list = list(filter(lambda lake: lake.lagoslakeid == lakeid, all_lakes))
+    filtered_list = list(filter(lambda lake: lake["lagoslakeid"] == lakeid, all_lakes))
     if len(filtered_list) == 0:
         raise Exception(f'No lake was found with lagoslakeid of "{lakeid}"')
 
-    lake_db_id = filtered_list[0].id
+    lake_db_id = filtered_list[0]["_id"]
 
     dateiso = datetime.strptime(datestr, '%Y-%m-%d').isoformat()
     # Step 2
 
     body = {
-        "raster_image" : None,
-        "display_image" : None,
+        "raster_image" :  os.path.basename(raster_image_path),
+        "display_image" : os.path.basename(display_image_path),
         "date" : dateiso, # utc
         "corner1latitude": corners[0][0],
         "corner1longitude": corners[0][1],
@@ -227,14 +229,7 @@ def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path 
         "lake" : lake_db_id,
         "lagoslakeid" : lakeid
     }
-
-    # print("Inside upload:" , body)
-    with open(raster_image_path, "rb") as rasterimage:
-        body["raster_image"] = FileUpload((f"raster_image_{lakeid}_{datestr}.tif", rasterimage))
-        with open(display_image_path, "rb") as displayimage:
-            body["display_image"] = FileUpload((f"display_image_{lakeid}_{datestr}.png", displayimage))
-            created = client.collection("spatialPredictionMaps").create(body)
-
+    mongo_spatial_predictions_collection.insert_one(body)
 
 for path_tif in tqdm(paths):
     path_tif = os.path.join(input_tif_folder, path_tif)

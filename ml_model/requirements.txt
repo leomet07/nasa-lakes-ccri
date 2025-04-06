@@ -31,6 +31,7 @@ debugpy==1.8.9
 decorator==5.1.1
 defusedxml==0.7.1
 distributed==2024.9.0
+dnspython==2.7.0
 executing==2.1.0
 fastjsonschema==2.21.1
 fastrlock==0.8.2
@@ -116,6 +117,7 @@ pyarrow==17.0.0
 pycparser==2.22
 pyct==0.5.0
 Pygments==2.18.0
+pymongo==4.11.3
 pyogrio==0.10.0
 pyparsing==3.2.0
 pyproj==3.7.0
