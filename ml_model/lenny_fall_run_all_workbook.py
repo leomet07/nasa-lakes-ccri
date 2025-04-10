@@ -70,7 +70,7 @@ def add_suffix_to_filename_at_tif_path(filename : str, suffix : str):
     parts = filename.split(".")
     newfilename =  parts[0] + f"_{suffix}." + ".".join(parts[1:])
 
-    to_tif_folder_path = os.path.join(tif_out_folder, newfilename.split("/")[-1])
+    to_tif_folder_path = os.path.join(tif_out_folder, os.path.basename(newfilename))
 
     return to_tif_folder_path
 
