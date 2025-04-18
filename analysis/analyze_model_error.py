@@ -8,22 +8,30 @@ import sys
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from matplotlib import pyplot as plt
+from datetime import datetime
 
 load_dotenv()
 ROOT_DB_FILEPATH = os.getenv("ROOT_DB_FILEPATH")  # for accessing files manually
-USE_TEST_DATASET_FOR_ERROR_ANALYSIS = os.getenv("USE_TEST_DATASET_FOR_ERROR_ANALYSIS") == "true"
-all_spatial_predictions = map(
-    vars,  # to convert record to dict
-    db_utils.client.collection("spatialPredictionMaps").get_full_list(batch=100_000),
+USE_TEST_DATASET_FOR_ERROR_ANALYSIS = (
+    os.getenv("USE_TEST_DATASET_FOR_ERROR_ANALYSIS") == "true"
 )
-all_spatial_predictions_df = pd.DataFrame.from_dict(all_spatial_predictions)
+TIF_OUT_FILEPATH = os.getenv("TIF_OUT_FILEPATH")  # for accessing files manually
 
+all_spatial_predictions = list(db_utils.spatial_predictions_collection.find({}))
+all_spatial_predictions_df = pd.DataFrame.from_dict(all_spatial_predictions)
+all_spatial_predictions_df["date_str"] = pd.to_datetime(
+    all_spatial_predictions_df["date"], format=r"%Y-%m-%d"
+)
+
+print(all_spatial_predictions_df.head)
 
 all_data = pd.read_csv(
     os.getenv("ALL_INPUT_DATA_CSV")
 )  # this later creates cleaned_data for training model
 
-all_data_train, all_data_test = train_test_split(all_data, test_size=0.2, random_state=621) # constant hard coded from ../ml_model/model_data.py
+all_data_train, all_data_test = train_test_split(
+    all_data, test_size=0.2, random_state=621
+)  # constant hard coded from ../ml_model/model_data.py
 
 if USE_TEST_DATASET_FOR_ERROR_ANALYSIS:
     all_data = all_data_test
@@ -43,7 +51,7 @@ for index, row in tqdm(all_data.iterrows(), total=len(all_data)):
 
     matched_predictions = all_spatial_predictions_df[
         (all_spatial_predictions_df["lagoslakeid"] == lagoslakeid)
-        & (all_spatial_predictions_df["date"] == f"{date} 00:00:00.000Z")
+        & (all_spatial_predictions_df["date_str"] == date)
     ]  # filter to find lake's spatial prediction with correct date
 
     if len(matched_predictions) == 0:
@@ -52,8 +60,7 @@ for index, row in tqdm(all_data.iterrows(), total=len(all_data)):
     # print(f"Found prediction for Lake{lagoslakeid} on {date}")
 
     spatial_prediction = matched_predictions.iloc[0]
-    file_path = f"{ROOT_DB_FILEPATH}/pb_data/storage/{spatial_prediction["collection_id"]}/{spatial_prediction["id"]}/{spatial_prediction["raster_image"]}"
-
+    file_path = os.path.join(TIF_OUT_FILEPATH, spatial_prediction["raster_image"])
     try:
         stats = raster_utils.get_analytics_from_circular_section_in_raster_file(
             file_path, lat, lng
@@ -103,5 +110,7 @@ plt.hist(abs_errors, 50)
 plt.ylabel("Frequency")
 plt.xlabel("Absolute Error (µg/L)")
 plt.xticks(np.arange(0, 51, 5.0))
-plt.title(f"Absolute Error with 2019-2024 August Predictions Compared to {"Testing Portion of" if USE_TEST_DATASET_FOR_ERROR_ANALYSIS else "All"} Corresponding In-Situ Data")
+plt.title(
+    f"Absolute Error with 2019-2024 August Predictions Compared to {"Testing Portion of" if USE_TEST_DATASET_FOR_ERROR_ANALYSIS else "All"} Corresponding In-Situ Data"
+)
 plt.show()
