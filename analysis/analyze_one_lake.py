@@ -12,6 +12,7 @@ from datetime import datetime
 from is_lake_insitu import is_lake_row_insitu
 import numpy as np
 import joblib
+import pymongo
 
 TIF_OUT_FILEPATH = os.getenv("TIF_OUT_FILEPATH")  # for accessing files manually
 SAVED_PLOTS_FOLDER_PATH = os.getenv("SAVED_PLOTS_FOLDER_PATH")
@@ -33,7 +34,7 @@ if not matched_lake:
 lake_spatial_predictions_list = list(
     db_utils.spatial_predictions_collection.find(
         {"lagoslakeid": lagoslakeid},
-    )
+    ).sort([("date", pymongo.ASCENDING)])
 )
 print("number of spatial_predictions: ", len(lake_spatial_predictions_list))
 
@@ -67,12 +68,19 @@ for index in tqdm(range(len(lake_spatial_predictions_list))):
     dates_to_plot.append(spatial_prediction["date"])
     y_s_to_plot.append(spatial_prediction["mean"])
 
-plt.scatter(
-    dates_to_plot, y_s_to_plot
-)  # plot inside loop so that line is NOT continous from nov to feb (excluded cuz ice)
-# TODO: to use .plot, dates must be sorted (in monogdb call use sort={})
+plt.plot(dates_to_plot, y_s_to_plot)
 
 plt.gcf().autofmt_xdate()  # must be called AFTER plotting
+for year in range(2019, 2024 + 1):
+    # Shade section of year we are interested in
+    plt.axvspan(
+        datetime(year, 3, 1),
+        datetime(year, 11, 1),
+        facecolor="0.5",
+        alpha=0.5,
+    )
+    # Draw midlineof year (July 2nd)
+    plt.axvline(x=datetime(year, 7, 2), color="r")
 
 plt.title(f"(Mean) Chl-a Concentration Of Lake {matched_lake["name"]} Over Time")
 plt.xlabel("Date")
