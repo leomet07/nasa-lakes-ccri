@@ -10,29 +10,28 @@ import os
 import json
 import pandas as pd
 from datetime import datetime
-from is_lake_insitu import is_lake_row_insitu
 import numpy as np
 import rasterio
 
-ROOT_DB_FILEPATH = os.getenv("ROOT_DB_FILEPATH") # for accessing files manually
-ACCESS_STORAGE_MODE = "local" # "web" | "local" # Web DB OR Copy of Web DB cloned to local computer
+TIF_OUT_FILEPATH = os.getenv("TIF_OUT_FILEPATH")  # for accessing files manually
+SAVED_PLOTS_FOLDER_PATH = os.getenv("SAVED_PLOTS_FOLDER_PATH")
+ACCESS_STORAGE_MODE = (
+    "local"  # "web" | "local" # Web DB OR Copy of Web DB cloned to local computer
+)
 
-all_spatial_predictions = db_utils.client.collection("spatialPredictionMaps").get_full_list(batch=100_000)
+all_spatial_predictions_list = list(db_utils.spatial_predictions_collection.find({}))
 
-print("number of spatial_predictions: ", len(all_spatial_predictions))
-
-all_spatial_predictions_list = list(map(vars, all_spatial_predictions))
+print("number of spatial_predictions: ", len(all_spatial_predictions_list))
 
 vals = []
 
 for index in tqdm(range(len(all_spatial_predictions_list))):
     spatial_prediction = all_spatial_predictions_list[index]
     if ACCESS_STORAGE_MODE == "local":
-        file_path = f"{ROOT_DB_FILEPATH}/pb_data/storage/{spatial_prediction["collection_id"]}/{spatial_prediction["id"]}/{spatial_prediction["raster_image"]}"
+        file_path = os.path.join(TIF_OUT_FILEPATH, spatial_prediction["raster_image"])
         raster_array = raster_utils.get_raster_array_from_file(file_path)
-    elif ACCESS_STORAGE_MODE == "web": 
-        downloaded_raster_bytes = db_utils.download_prediction_image_by_record_id(spatial_prediction["id"])
-        raster_array = raster_utils.get_raster_array_from_bytes(downloaded_raster_bytes)
+    elif ACCESS_STORAGE_MODE == "web":
+        raise Exception("Can't use web access mode, not implemented yet")
     else:
         raise Exception('ACCESS_STORAGE_MODE must be either "local" or "web"')
 
@@ -44,10 +43,18 @@ for index in tqdm(range(len(all_spatial_predictions_list))):
     vals.extend(no_nans)
 
 print("# of vals: ", len(vals))
+print("Mean of vals: ", np.mean(vals))
+print("Min of vals: ", np.min(vals))
+print("Max of vals: ", np.max(vals))
 
 plt.hist(vals, 200)
 plt.xlim(0, 75)
 plt.xlabel("Predicted chl-a (ug/l)")
 plt.ylabel("Frequency")
 plt.title("Real/Production Prediction Histogram")
+plt.savefig(
+    os.path.join(
+        SAVED_PLOTS_FOLDER_PATH, f"{str(datetime.now())}-all-pixel-histogram.png"
+    )
+)
 plt.show()
