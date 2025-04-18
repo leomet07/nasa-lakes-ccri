@@ -6,6 +6,7 @@ import time
 from pprint import pprint
 from tqdm import tqdm
 from matplotlib import pyplot as plt
+import matplotlib.dates as mdates
 import os
 import json
 import pandas as pd
@@ -71,26 +72,47 @@ def get_mean_for_range(df, start_date: datetime, end_date: datetime):
     return df_new["mean"].mean(axis=0)  # axis = 0 for columnwise mean
 
 
-date_range = list(
-    pd.date_range(start="2019-01-01", end="2025-01-01", freq="MS", inclusive="right")
-)
+plt.gca().xaxis.set_major_formatter(mdates.DateFormatter(r"%Y-%m-%d"))
+plt.gca().xaxis.set_major_locator(mdates.MonthLocator(interval=2))
 
+for year in range(2019, 2024 + 1):
+    dates_to_plot = []
+    means_to_plot = []
+    date_range = list(
+        pd.date_range(
+            start=f"{year}-03-01", end=f"{year}-11-01", freq="MS", inclusive="right"
+        )
+    )  # includes dates from march all the way to oct 31 (excludes jan, feb, nov, dec)
 
-dates_to_plot = []
-means_to_plot = []
-for i in range(len(date_range) - 1):
-    start_date = date_range[i]
-    end_date = date_range[i + 1]
-    mean = get_mean_for_range(predictions_df, start_date, end_date)
-    print(
-        f"Mean from {start_date} to {end_date}: ",
-        mean,
+    for i in range(len(date_range) - 1):
+        start_date = date_range[i]
+        end_date = date_range[i + 1]
+        mean = get_mean_for_range(predictions_df, start_date, end_date)
+        print(
+            f"Mean from {start_date} to {end_date}: ",
+            mean,
+        )
+
+        dates_to_plot.append(start_date + ((end_date - start_date) / 2))  # middle date
+        means_to_plot.append(mean)
+
+    # Shade background
+    plt.axvspan(
+        datetime(year, 1, 1),
+        datetime(year, 12, 31),
+        facecolor=str((0.2 + (year - 2019) / 10)),
+        alpha=0.5,
     )
+    # Draw midlineof year (July 2nd)
+    plt.axvline(x=datetime(year, 7, 2), color="r")
 
-    dates_to_plot.append(start_date + ((end_date - start_date) / 2))  # middle date
-    means_to_plot.append(mean)
+    plt.plot(
+        dates_to_plot, means_to_plot
+    )  # plot inside loop so that line is NOT continous from nov to feb (excluded cuz ice)
 
-plt.scatter(dates_to_plot, means_to_plot)
+
+plt.gcf().autofmt_xdate()  # must be called AFTER plotting
+
 plt.title("Mean Chl-a Concentration Of All Lakes Over Time")
 plt.xlabel("Date")
 plt.ylabel("Chl-a (µg/L)")
