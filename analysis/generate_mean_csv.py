@@ -12,57 +12,96 @@ import pandas as pd
 from datetime import datetime
 from is_lake_insitu import is_lake_row_insitu
 import numpy as np
+import joblib
 
-ROOT_DB_FILEPATH = os.getenv("ROOT_DB_FILEPATH") # for accessing files manually
-ACCESS_STORAGE_MODE = "local" # "web" | "local" # Web DB OR Copy of Web DB cloned to local computer
+TIF_OUT_FILEPATH = os.getenv("TIF_OUT_FILEPATH")  # for accessing files manually
+SAVED_PLOTS_FOLDER_PATH = os.getenv("SAVED_PLOTS_FOLDER_PATH")
+ACCESS_STORAGE_MODE = (
+    "local"  # "web" | "local" # Web DB OR Copy of Web DB cloned to local computer
+)
+USE_CACHED_MEANS = (os.getenv("USE_CACHED_MEANS") or "").lower() == "true"
+CACHED_MEANS_SAVE_FILE = "summer_means_df.joblib"
 
-all_spatial_predictions = db_utils.client.collection("spatialPredictionMaps").get_full_list(batch=100_000)
+all_spatial_predictions_list = list(db_utils.spatial_predictions_collection.find({}))
+print("number of spatial_predictions: ", len(all_spatial_predictions_list))
 
-print("number of spatial_predictions: ", len(all_spatial_predictions))
+if USE_CACHED_MEANS and os.path.exists(CACHED_MEANS_SAVE_FILE):
+    print("Using cached spatial prediction means...")
+    predictions_df = joblib.load(CACHED_MEANS_SAVE_FILE)
+else:
+    print("Generating spatial prediction means from rasters on disk...")
+    for index in tqdm(range(len(all_spatial_predictions_list))):
+        spatial_prediction = all_spatial_predictions_list[index]
+        if ACCESS_STORAGE_MODE == "local":
+            file_path = os.path.join(
+                TIF_OUT_FILEPATH, spatial_prediction["raster_image"]
+            )
+            results_array = raster_utils.get_analytics_from_predictions_raster_file(
+                file_path
+            )  # max_val, mean_val, stdev
+        elif ACCESS_STORAGE_MODE == "web":
+            raise Exception("Can't use web access mode, not implemented yet")
+        else:
+            raise Exception('ACCESS_STORAGE_MODE must be either "local" or "web"')
 
-all_spatial_predictions_list = list(map(vars, all_spatial_predictions))
+        spatial_prediction["max"] = results_array[0]
+        spatial_prediction["min"] = results_array[1]
+        spatial_prediction["mean"] = results_array[2]
+        spatial_prediction["std"] = results_array[3]
 
-for index in tqdm(range(len(all_spatial_predictions_list))):
-    spatial_prediction = all_spatial_predictions_list[index]
-    if ACCESS_STORAGE_MODE == "local":
-        file_path = f"{ROOT_DB_FILEPATH}/pb_data/storage/{spatial_prediction["collection_id"]}/{spatial_prediction["id"]}/{spatial_prediction["raster_image"]}"
-        results_array = raster_utils.get_max_from_predictions_raster_file(
-            file_path
-        )  # max_val, mean_val, stdev
-    elif ACCESS_STORAGE_MODE == "web": 
-        results_array = raster_utils.get_max_from_predictions_raster_bytes(
-            db_utils.download_prediction_image_by_record_id(spatial_prediction["id"])
-        )  # max_val, mean_val, stdev
-    else:
-        raise Exception('ACCESS_STORAGE_MODE must be either "local" or "web"')
-    
-    spatial_prediction["max"] = results_array[0]
-    spatial_prediction["min"] = results_array[1]
-    spatial_prediction["mean"] = results_array[2]
-    spatial_prediction["std"] = results_array[3]
-    spatial_prediction["date"] = datetime.fromisoformat(spatial_prediction["date"])
+    predictions_df = pd.DataFrame.from_records(all_spatial_predictions_list)
+    predictions_df = predictions_df[
+        ["lagoslakeid", "date", "max", "min", "mean", "std"]
+    ]  # Restrict predictions_df to reduce file size
 
-predictions_df = pd.DataFrame.from_records(all_spatial_predictions_list)
+    predictions_df["insitu"] = predictions_df.apply(is_lake_row_insitu, axis=1)
+    joblib.dump(predictions_df, CACHED_MEANS_SAVE_FILE)
 
-predictions_df = predictions_df[["lagoslakeid", "date", "max", "min", "mean", "std"]] # Restrict predictions_df to reduce file size
+predictions_df.to_csv(
+    "summer_means.csv", date_format=f"%Y%m%d", float_format="%f", index=False
+)  # note %f defaults to 6 digits of precision (won't do crazy scientific notation as str() does)
 
-predictions_df['insitu'] = predictions_df.apply(is_lake_row_insitu, axis=1)
 
-predictions_df.to_csv("summer_means.csv", date_format=f'%Y%m%d', float_format="%f", index=False) # note %f defaults to 6 digits of precision (won't do crazy scientific notation as str() does)
-
-# Get super means!
-print("Total rows: ", len(predictions_df))
-def get_august_mean_for_year(df, year: int):
-    df_new = df[(df["date"] > f'{year}-07-25') & (df["date"] < f'{year}-09-05')]
+def get_mean_for_range(df, start_date: datetime, end_date: datetime):
+    df_new = df[(df["date"] >= start_date) & (df["date"] <= end_date)]
     if len(df_new) == 0:
-        print(f"Cannot get august mean for {year} because there are zero predictions for that year.")
-    return df_new["mean"].mean(axis=0) # axis = 0 for columnwise mean
+        print(
+            f"Cannot get mean for from {start_date} to {end_date} because there are zero predictions for that range."
+        )
+    return df_new["mean"].mean(axis=0)  # axis = 0 for columnwise mean
 
-for year in range(2019, 2025):
-    print(f"Mean of lake-means for august {year}: ", get_august_mean_for_year(predictions_df, year))
 
-print("Min prediciton_STDEV: ", np.min(predictions_df["std"])) # Useful for debugging if there are low stds (caused by errenous or blank images)
-print("Max prediciton_STDEV: ", np.max(predictions_df["std"])) # Useful for debugging if there are low stds (caused by errenous or blank images)
+date_range = list(
+    pd.date_range(start="2019-01-01", end="2025-01-01", freq="MS", inclusive="right")
+)
+
+
+dates_to_plot = []
+means_to_plot = []
+for i in range(len(date_range) - 1):
+    start_date = date_range[i]
+    end_date = date_range[i + 1]
+    mean = get_mean_for_range(predictions_df, start_date, end_date)
+    print(
+        f"Mean from {start_date} to {end_date}: ",
+        mean,
+    )
+
+    dates_to_plot.append(start_date + ((end_date - start_date) / 2))  # middle date
+    means_to_plot.append(mean)
+
+plt.scatter(dates_to_plot, means_to_plot)
+plt.title("Mean Chl-a Concentration Of All Lakes Over Time")
+plt.xlabel("Date")
+plt.ylabel("Chl-a (µg/L)")
+plt.show()
+
+print(
+    "Min prediciton_STDEV: ", np.min(predictions_df["std"])
+)  # Useful for debugging if there are low stds (caused by errenous or blank images)
+print(
+    "Max prediciton_STDEV: ", np.max(predictions_df["std"])
+)  # Useful for debugging if there are low stds (caused by errenous or blank images)
 print("Avg prediciton_STDEV: ", np.mean(predictions_df["std"]))
 
 print("Min prediciton_min: ", np.min(predictions_df["min"]))
@@ -70,15 +109,33 @@ print("Max prediciton_min: ", np.max(predictions_df["max"]))
 print("Avg prediciton_min: ", np.mean(predictions_df["min"]))
 
 # Inspect very low STD (aka uniform prediction) lakes
-predictions_df["is_low_std"] = predictions_df.apply(lambda row: row["std"] < 0.000003, axis=1)
-predictions_df.to_csv("summer_means_inspect.csv", date_format=f'%Y%m%d', float_format="%f", index=False) # note %f defaults to 6 digits of precision (won't do crazy scientific notation as str() does)
+predictions_df["is_low_std"] = predictions_df.apply(
+    lambda row: row["std"] < 0.000003, axis=1
+)
+# predictions_df.to_csv(
+#     "summer_means_inspect.csv", date_format=f"%Y%m%d", float_format="%f", index=False
+# )  # note %f defaults to 6 digits of precision (won't do crazy scientific notation as str() does)
 
 sus_preds = len(predictions_df[predictions_df["is_low_std"] == True])
-insitu_sus_preds = len(predictions_df[(predictions_df["is_low_std"] == True) & (predictions_df["insitu"] == True)])
-non_insitu_sus_preds = len(predictions_df[(predictions_df["is_low_std"] == True) & (predictions_df["insitu"] == False)])
+insitu_sus_preds = len(
+    predictions_df[
+        (predictions_df["is_low_std"] == True) & (predictions_df["insitu"] == True)
+    ]
+)
+non_insitu_sus_preds = len(
+    predictions_df[
+        (predictions_df["is_low_std"] == True) & (predictions_df["insitu"] == False)
+    ]
+)
 print("# of predictions with suspiciously low standard deviations: ", sus_preds)
-print("# of predictions with suspiciously low standard deviations INSITU: ", insitu_sus_preds)
-print("# of predictions with suspiciously low standard deviations NOT INSITU: ", non_insitu_sus_preds)
+print(
+    "# of predictions with suspiciously low standard deviations INSITU: ",
+    insitu_sus_preds,
+)
+print(
+    "# of predictions with suspiciously low standard deviations NOT INSITU: ",
+    non_insitu_sus_preds,
+)
 
 insitu_preds = len(predictions_df[predictions_df["insitu"] == True])
 non_insitu_preds = len(predictions_df[predictions_df["insitu"] == False])
@@ -88,5 +145,11 @@ print("# of predictions not insitu: ", non_insitu_preds)
 ratio_sus_insitu_to_total_insitu_preds = insitu_sus_preds / insitu_preds
 ratio_sus_non_insitu_to_total_non_insitu_preds = non_insitu_sus_preds / non_insitu_preds
 
-print("Ratio of suspiciously low standard deviation lake-with-insitu-available predictions to total lake-with-insitu-available predictions: ", ratio_sus_insitu_to_total_insitu_preds)
-print("Ratio of suspiciously low standard deviation lake-without-insitu-available predictions to total lake-without-insitu-available predictions: ", ratio_sus_non_insitu_to_total_non_insitu_preds)
+print(
+    "Ratio of suspiciously low standard deviation lake-with-insitu-available predictions to total lake-with-insitu-available predictions: ",
+    ratio_sus_insitu_to_total_insitu_preds,
+)
+print(
+    "Ratio of suspiciously low standard deviation lake-without-insitu-available predictions to total lake-without-insitu-available predictions: ",
+    ratio_sus_non_insitu_to_total_non_insitu_preds,
+)

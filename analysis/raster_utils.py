@@ -60,19 +60,19 @@ def get_circular_section_from_file(
         return out_image
 
 
-def get_raster_array_from_bytes(raster_bytes: bytes):
-    with rasterio.io.MemoryFile(raster_bytes) as memfile:
-        with memfile.open() as src:
-            check_src(src)
-            return src.read()
+# def get_raster_array_from_bytes(raster_bytes: bytes):
+#     with rasterio.io.MemoryFile(raster_bytes) as memfile:
+#         with memfile.open() as src:
+#             check_src(src)
+#             return src.read()
 
 
-def get_max_from_predictions_raster_bytes(raster_bytes: bytes) -> float:
-    raster_array = get_raster_array_from_bytes(raster_bytes)
-    return run_analytics_on_raster(raster_array)
+# def get_max_from_predictions_raster_bytes(raster_bytes: bytes) -> float:
+#     raster_array = get_raster_array_from_bytes(raster_bytes)
+#     return run_analytics_on_raster(raster_array)
 
 
-def get_max_from_predictions_raster_file(file_path: str) -> int:
+def get_analytics_from_predictions_raster_file(file_path: str) -> int:
     raster_array = get_raster_array_from_file(file_path)
     return run_analytics_on_raster(raster_array)
 
