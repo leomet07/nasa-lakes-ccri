@@ -23,8 +23,6 @@ all_spatial_predictions_df["date_str"] = pd.to_datetime(
     all_spatial_predictions_df["date"], format=r"%Y-%m-%d"
 )
 
-print(all_spatial_predictions_df.head)
-
 all_data = pd.read_csv(
     os.getenv("ALL_INPUT_DATA_CSV")
 )  # this later creates cleaned_data for training model
