@@ -276,7 +276,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "overlay_predicted_and_insitu_testing_part_of_insitu_full.png"), bbox_inches='tight')
    
     # Same thing as above, but split x_axis
-    fig = plt.figure("Split X-axis, Predicted vs Insitu (Testing Dataset)", figsize=(14,7))
+    fig = plt.figure("Split X-axis, Predicted vs Insitu (Testing Dataset)", figsize=(7,7))
     bax = brokenaxes(xlims=((0, 25), (60, 70)), )
     # plt.tight_layout()
     bax.set_ylabel("Frequency", fontweight='bold', labelpad=45)
