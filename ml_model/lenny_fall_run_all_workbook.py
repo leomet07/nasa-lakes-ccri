@@ -79,7 +79,11 @@ def modify_tif(input_tif : str, SA_SQ_KM_FROM_SHAPEFILE_constant : float, pct_de
     with rasterio.open(input_tif) as src:
         raster_data = src.read()
         profile = src.profile  # Get the profile of the existing raster
-
+        tags = src.tags()
+    
+    # print(tags)
+    satellite = tags["satellite"]
+    # print("satellite: ", satellite)
 
     # create new bands
     SA_SQ_KM_band = np.full_like(raster_data[0], SA_SQ_KM_FROM_SHAPEFILE_constant, dtype=raster_data.dtype)
@@ -92,22 +96,28 @@ def modify_tif(input_tif : str, SA_SQ_KM_FROM_SHAPEFILE_constant : float, pct_de
 
     # output GeoTIFF file
     modified_tif = add_suffix_to_filename_at_tif_path(input_tif, "modified")
-
-    # write the modified raster data to the new GeoTIFF file
+    if satellite.startswith("sentinel"):
+        bands_to_fill = 0
+    elif satellite.startswith("landsat"):
+        bands_to_fill = 9 - 5 # Landsat has 5, not 9 bands, so fill 4 bands
+    else:
+        raise Exception(f'Satellite "{satellite}" predictions not implemented yet.')
+    
     with rasterio.open(modified_tif, 'w', **profile) as dst:
         # write original bands
         for i in range(1, raster_data.shape[0] + 1):
             dst.write(raster_data[i-1], indexes=i)
 
-        # # write additional bands
-        dst.write(SA_SQ_KM_band, indexes=raster_data.shape[0] + 1)
-        dst.write(pct_dev_band, indexes=raster_data.shape[0] + 2)
-        dst.write(pct_ag_band, indexes=raster_data.shape[0] + 3)
-        
-        # Testing 2 bands
-        # dst.write(pct_dev_band, indexes=raster_data.shape[0] + 1)
-        # dst.write(pct_ag_band, indexes=raster_data.shape[0] + 2)
+        bands_to_fill = 9 - 5 
+        for i in range(raster_data.shape[0] + 1, raster_data.shape[0] + 1 + bands_to_fill):
+            print(f"Writing null band... at ({i})")
+            null_band = np.full_like(raster_data[0], model_data.NAN_SUBSTITUTE_CONSANT, dtype=raster_data.dtype)
+            dst.write(null_band, indexes=i)
 
+        # # write additional bands
+        dst.write(SA_SQ_KM_band, indexes=raster_data.shape[0] + bands_to_fill + 1)
+        dst.write(pct_dev_band, indexes=raster_data.shape[0] + bands_to_fill + 2)
+        dst.write(pct_ag_band, indexes=raster_data.shape[0] + bands_to_fill + 3)
 
         dst.transform = src.transform
         dst.crs = src.crs
