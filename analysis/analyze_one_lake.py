@@ -33,20 +33,22 @@ if not matched_lake:
 
 lake_spatial_predictions_list = list(
     db_utils.spatial_predictions_collection.find(
-        {"lagoslakeid": lagoslakeid},
+        {
+            "lagoslakeid": lagoslakeid,
+        },
     ).sort([("date", pymongo.ASCENDING)])
 )
 print("number of spatial_predictions: ", len(lake_spatial_predictions_list))
 
-
 print("Generating spatial prediction means from rasters on disk...")
 
-dates_to_plot = []
-y_s_to_plot = []
+plt.figure(
+    f"Mean Chl-a Concentration Of Lake {matched_lake["name"]} Over Time",
+    figsize=(18, 9),
+)
 
 plt.gca().xaxis.set_major_formatter(mdates.DateFormatter(r"%Y-%m-%d"))
 plt.gca().xaxis.set_major_locator(mdates.MonthLocator(interval=2))
-
 
 for index in tqdm(range(len(lake_spatial_predictions_list))):
     spatial_prediction = lake_spatial_predictions_list[index]
@@ -65,13 +67,26 @@ for index in tqdm(range(len(lake_spatial_predictions_list))):
     spatial_prediction["mean"] = results_array[2]
     spatial_prediction["std"] = results_array[3]
 
-    dates_to_plot.append(spatial_prediction["date"])
-    y_s_to_plot.append(spatial_prediction["mean"])
+predictions_df = pd.DataFrame.from_records(lake_spatial_predictions_list)
+predictions_df = predictions_df[
+    ["lagoslakeid", "date", "max", "min", "mean", "std"]
+]  # Restrict predictions_df to reduce file size
 
-plt.plot(dates_to_plot, y_s_to_plot)
+START_YEAR = 2019
+END_YEAR = 2024
 
-plt.gcf().autofmt_xdate()  # must be called AFTER plotting
-for year in range(2019, 2024 + 1):
+for year in range(START_YEAR, END_YEAR + 1):
+    dates_to_plot = []
+    means_to_plot = []
+
+    for index, row in predictions_df[
+        (predictions_df["date"] >= f"{year}-03-01")
+        & (predictions_df["date"] <= f"{year}-11-01")
+    ].iterrows():
+        dates_to_plot.append(row["date"])
+        means_to_plot.append(row["mean"])
+
+    plt.plot(dates_to_plot, means_to_plot, label=f"{year}")
     # Shade section of year we are interested in
     plt.axvspan(
         datetime(year, 3, 1),
@@ -79,10 +94,15 @@ for year in range(2019, 2024 + 1):
         facecolor="0.5",
         alpha=0.5,
     )
-    # Draw midlineof year (July 2nd)
-    plt.axvline(x=datetime(year, 7, 2), color="r")
 
-plt.title(f"(Mean) Chl-a Concentration Of Lake {matched_lake["name"]} Over Time")
+plt.gcf().autofmt_xdate()  # must be called AFTER plotting
+
+plt.title(f"Mean Chl-a Concentration Of Lake {matched_lake["name"]} Over Time")
 plt.xlabel("Date")
 plt.ylabel("Chl-a (µg/L)")
+plt.legend()
+plt.savefig(
+    os.path.join(SAVED_PLOTS_FOLDER_PATH, f"lake{lagoslakeid}_across_years.png"),
+    bbox_inches="tight",
+)
 plt.show()

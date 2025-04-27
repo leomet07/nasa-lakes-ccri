@@ -72,10 +72,14 @@ def get_mean_for_range(df, start_date: datetime, end_date: datetime):
     return df_new["mean"].mean(axis=0)  # axis = 0 for columnwise mean
 
 
+plt.figure("Mean Chl-a Concentration Of All Lakes Over Time", figsize=(18, 9))
 plt.gca().xaxis.set_major_formatter(mdates.DateFormatter(r"%Y-%m-%d"))
 plt.gca().xaxis.set_major_locator(mdates.MonthLocator(interval=2))
 
-for year in range(2019, 2024 + 1):
+START_YEAR = 2019
+END_YEAR = 2024
+
+for year in range(START_YEAR, END_YEAR + 1):
     dates_to_plot = []
     means_to_plot = []
     date_range = list(
@@ -96,26 +100,31 @@ for year in range(2019, 2024 + 1):
         dates_to_plot.append(start_date + ((end_date - start_date) / 2))  # middle date
         means_to_plot.append(mean)
 
-    # Shade background
+    # Shade section of year we are interested in
     plt.axvspan(
-        datetime(year, 1, 1),
-        datetime(year, 12, 31),
-        facecolor=str((0.2 + (year - 2019) / 10)),
+        datetime(year, 3, 1),
+        datetime(year, 11, 1),
+        facecolor="0.5",
         alpha=0.5,
     )
+
     # Draw midlineof year (July 2nd)
-    plt.axvline(x=datetime(year, 7, 2), color="r")
+    # plt.axvline(x=datetime(year, 7, 2), color="r")
 
     plt.plot(
-        dates_to_plot, means_to_plot
+        dates_to_plot, means_to_plot, label=f"{year}"
     )  # plot inside loop so that line is NOT continous from nov to feb (excluded cuz ice)
-
 
 plt.gcf().autofmt_xdate()  # must be called AFTER plotting
 
 plt.title("Mean Chl-a Concentration Of All Lakes Over Time")
 plt.xlabel("Date")
 plt.ylabel("Chl-a (µg/L)")
+plt.legend()
+plt.savefig(
+    os.path.join(SAVED_PLOTS_FOLDER_PATH, "mean_of_rasters_across_years.png"),
+    bbox_inches="tight",
+)
 plt.show()
 
 print(
