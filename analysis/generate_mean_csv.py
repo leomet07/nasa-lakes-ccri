@@ -23,6 +23,9 @@ ACCESS_STORAGE_MODE = (
 USE_CACHED_MEANS = (os.getenv("USE_CACHED_MEANS") or "").lower() == "true"
 CACHED_MEANS_SAVE_FILE = "summer_means_df.joblib"
 
+if not os.path.exists(SAVED_PLOTS_FOLDER_PATH):
+    os.makedirs(SAVED_PLOTS_FOLDER_PATH)
+
 all_spatial_predictions_list = list(db_utils.spatial_predictions_collection.find({}))
 print("number of spatial_predictions: ", len(all_spatial_predictions_list))
 
@@ -35,11 +38,15 @@ else:
         spatial_prediction = all_spatial_predictions_list[index]
         if ACCESS_STORAGE_MODE == "local":
             file_path = os.path.join(
-                TIF_OUT_FILEPATH, spatial_prediction["raster_image"]
+                TIF_OUT_FILEPATH, f"tif_out_{spatial_prediction["session_uuid"]}", spatial_prediction["raster_image"]
             )
-            results_array = raster_utils.get_analytics_from_predictions_raster_file(
-                file_path
-            )  # max_val, mean_val, stdev
+            try:
+                results_array = raster_utils.get_analytics_from_predictions_raster_file(
+                    file_path
+                )  # max_val, mean_val, stdev
+            except Exception as e:
+                print(e)
+                continue
         elif ACCESS_STORAGE_MODE == "web":
             raise Exception("Can't use web access mode, not implemented yet")
         else:
@@ -57,6 +64,8 @@ else:
 
     predictions_df["insitu"] = predictions_df.apply(is_lake_row_insitu, axis=1)
     joblib.dump(predictions_df, CACHED_MEANS_SAVE_FILE)
+
+predictions_df['date'] = pd.to_datetime(predictions_df['date']) # ensure it is a date
 
 predictions_df.to_csv(
     "summer_means.csv", date_format=f"%Y%m%d", float_format="%f", index=False
@@ -76,7 +85,7 @@ plt.figure("Mean Chl-a Concentration Of All Lakes Over Time", figsize=(18, 9))
 plt.gca().xaxis.set_major_formatter(mdates.DateFormatter(r"%Y-%m-%d"))
 plt.gca().xaxis.set_major_locator(mdates.MonthLocator(interval=2))
 
-START_YEAR = 2019
+START_YEAR = 2013
 END_YEAR = 2024
 
 for year in range(START_YEAR, END_YEAR + 1):
