@@ -158,7 +158,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     # plt.ylabel("Frequency", fontweight='bold') # label not needed becauase in the paper it is next to a chart that alr has this ylabel
     plt.xlabel("Number of Samples per Lake", fontweight='bold')
     plt.tight_layout()
-    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "number_of_samples_per_lake.png"), bbox_inches='tight')
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "number_of_samples_per_lake.jpg"), bbox_inches='tight', dpi=400)
     
 
     # Plot y_pred performance: https://stackoverflow.com/questions/19064772/visualization-of-scatter-plots-with-overlapping-points-in-matplotlib
@@ -184,7 +184,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.ylabel('Predicted Chl-a (µg/L)', fontweight='bold')
     plt.gca().set_aspect('equal')
     plt.tight_layout()
-    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "scatter_plot_pred_vs_real.png"), bbox_inches='tight')
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "scatter_plot_pred_vs_real.jpg"), bbox_inches='tight', dpi=400)
 
     # Feature importances plot
     plt.figure('Feature Importances', (9,7))
@@ -201,7 +201,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.xlabel('Relative Importance', fontweight='bold')
     # plt.yticks(range(len(indices)), [features[i] for i in indices])
     plt.tight_layout()
-    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "feature_importances.png"))
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "feature_importances.jpg"))
 
     plt.figure(f"Chlorophyll-a Prediction on Testing Portion of In-Situ Data", (14,7))
     # Histogram of model's performance on testing data, aka 20% of the in situ data
@@ -211,7 +211,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.xticks(np.arange(0, 60, 5.0))
     plt.xlim((0, 60))
     plt.tight_layout()
-    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_testing_part_of_insitu.png"), bbox_inches='tight')
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_testing_part_of_insitu.jpg"), bbox_inches='tight', dpi=400)
 
 
     plt.figure(f"Chlorophyll-a Prediction Error on Testing Portion of In-Situ Data", (14,7))
@@ -223,7 +223,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.xticks(np.arange(-60, 60, 5.0))
     plt.xlim((-60, 60))
     plt.tight_layout()
-    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_error_testing_part_of_insitu.png"), bbox_inches='tight')
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_error_testing_part_of_insitu.jpg"), bbox_inches='tight', dpi=400)
 
 
     # Run predictions on ALL insitu data
@@ -237,7 +237,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.xticks(np.arange(0, 60, 5.0))
     plt.xlim((0, 60))
     plt.tight_layout()
-    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_all_insitu.png"), bbox_inches='tight')
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_all_insitu.jpg"), bbox_inches='tight', dpi=400)
 
     
     plt.figure(f"Chlorophyll-a Prediction Error on All In-Situ Data", (14,7))
@@ -249,7 +249,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.xticks(np.arange(-60, 60, 5.0))
     plt.xlim((-60, 60))
     plt.tight_layout()
-    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_error_all_insitu.png"), bbox_inches='tight')
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_chla_prediction_error_all_insitu.jpg"), bbox_inches='tight', dpi=400)
 
     plt.figure(f"Histogram of In-Situ Chlorophyll-a", (7,7))
     insitu_chla_median = np.median(y.values)
@@ -261,7 +261,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.xlim((0, 60))
     plt.axvline(x=insitu_chla_median, color='black', linestyle='--', linewidth=1.5)
     plt.tight_layout()
-    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_insitu_chla.png"), bbox_inches='tight')
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "histogram_insitu_chla.jpg"), bbox_inches='tight', dpi=400)
 
     plt.figure(f"Predicted vs Insitu (Testing Dataset)", (14,7))
     # Overlayed Histogram of the in situ truths vs the predicted values
@@ -273,7 +273,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
     plt.xticks(np.arange(0, 60, 5.0))
     plt.xlim((0, 60))
     plt.tight_layout()
-    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "overlay_predicted_and_insitu_testing_part_of_insitu_full.png"), bbox_inches='tight')
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "overlay_predicted_and_insitu_testing_part_of_insitu_full.jpg"), bbox_inches='tight', dpi=400)
    
     # Same thing as above, but split x_axis
     fig = plt.figure("Split X-axis, Predicted vs Insitu (Testing Dataset)", figsize=(7,7))
@@ -293,7 +293,7 @@ if GRAPH_AND_COMPARE_PERFORMANCE:
 
 
 
-    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "overlay_predicted_and_insitu_testing_part_of_insitu.png"), bbox_inches='tight')
+    plt.savefig(os.path.join(PERFORMANCE_CHART_PATH, "overlay_predicted_and_insitu_testing_part_of_insitu.jpg"), bbox_inches='tight', dpi=400)
 
     # Show all plots at the same time
     plt.show()

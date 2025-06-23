@@ -19,7 +19,7 @@ if IS_CPU_MODE:
 else:
     import model_training
 
-mode = "testing"
+mode = "all"
 out_path = os.path.join("timeseries", "timeseries_" + mode)
 if not os.path.exists(out_path):
     os.makedirs(out_path)
@@ -96,7 +96,7 @@ for lakeid in tqdm(np.unique(all_data["lagoslakei"])):
     plt.legend(loc="upper right", fontsize=16)
 
     lake_name = lake_name.title().replace(" ", "")
-    file_path = os.path.join(out_path, f"{lake_name}_time_series.png")
+    file_path = os.path.join(out_path, f"{lake_name}_time_series.jpg")
 
-    plt.savefig(file_path)
+    plt.savefig(file_path, dpi=400)
     plt.close()
