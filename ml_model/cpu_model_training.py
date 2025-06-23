@@ -137,7 +137,7 @@ print(f"RMSE: {rmse}")
 print(f"MAE: {mae}")
 
 if GRAPH_AND_COMPARE_PERFORMANCE:
-    plt.rcParams.update({'font.size': 18})
+    plt.rcParams.update({'font.size': 18, 'font.family' : "sans-serif", "font.sans-serif" : "Arial"})
 
     if not os.path.exists(PERFORMANCE_CHART_PATH):
         os.makedirs(PERFORMANCE_CHART_PATH)

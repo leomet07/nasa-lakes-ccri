@@ -19,6 +19,8 @@ if IS_CPU_MODE:
 else:
     import model_training
 
+plt.rcParams.update({'font.size': 18, 'font.family' : "sans-serif", "font.sans-serif" : "Arial"})
+
 mode = "all"
 out_path = os.path.join("timeseries", "timeseries_" + mode)
 if not os.path.exists(out_path):
