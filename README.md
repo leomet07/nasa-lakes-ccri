@@ -17,3 +17,9 @@ This is a monorepo containing three subdirectories. They represent our workflow,
 2. ``ml_model/``: This is where the training data is assembled, split into the training and testing subsets, and passed into a [ExtraTreesRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesRegressor.html). After analyzing the performance of the model (with figures), entire directories of images downloaded from step 1 can be passed in to run en masse. Each image, along with some metadata about its time, corresponding lake, and filepaths, is saved as a new record in a MongoDB collection for all spatial predictions.
 
 3. ``analysis/``: This is where the production runs from step 2 are analyzed. It queries the MongoDB database for any images matching analysis criteria. If they are found, the output rasters are opened and analyzed for their min, max, mean, STD. It is also possible to target specific points within the output raster based of the latitude and longitude. The many analysis scripts are detailed in the analysis README. One particularly useful script analyzes the models RMSE/MAE within 60m circles about centroids (usually 2-3 pixels radius about the centroid). The main script analyzes and plots the mean chla since 2013 of a specific lake or all lakes.
+
+## Acknowledgments
+
+### Funding:
+
+This research was supported by funding from the NASA Climate Change Research Initiative (CCRI) and the Department of Energy (DOE) under award number DE-SC0023208, as well as by the Center for Remote Sensing and Earth System Sciences (ReSESS) at the New York City College of Technology. 
