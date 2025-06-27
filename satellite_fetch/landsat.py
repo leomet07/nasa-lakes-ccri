@@ -427,6 +427,7 @@ def maskL8sr(image):
     cloudShadowBitMask = 1 << 3
     cloudsBitMask = 1 << 4
     cirrusBitMask = 1 << 2
+    waterBitMask = 1 << 7  # 1 means water
     # Get the pixel QA band.
     qa = image.select("QA_PIXEL")
     # Both flags should be set to zero, indicating clear conditions.
@@ -435,6 +436,7 @@ def maskL8sr(image):
         .eq(0)
         .And(qa.bitwiseAnd(cloudsBitMask).eq(0))
         .And(qa.bitwiseAnd(cirrusBitMask).eq(0))
+        .And(qa.bitwiseAnd(waterBitMask).neq(0))  # keep water
     )
     return image.updateMask(mask)
 

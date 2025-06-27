@@ -23,6 +23,9 @@ ACCESS_STORAGE_MODE = (
 USE_CACHED_MEANS = (os.getenv("USE_CACHED_MEANS") or "").lower() == "true"
 CACHED_MEANS_SAVE_FILE = "summer_means_df.joblib"
 
+LANDSAT_SESSION_UUIDS = os.getenv("LANDSAT_SESSION_UUIDS").split(",")
+SENTINEL_SESSION_UUIDS = os.getenv("SENTINEL_SESSION_UUIDS").split(",")
+
 if not os.path.exists(SAVED_PLOTS_FOLDER_PATH):
     os.makedirs(SAVED_PLOTS_FOLDER_PATH)
 
@@ -57,9 +60,17 @@ else:
         spatial_prediction["mean"] = results_array[2]
         spatial_prediction["std"] = results_array[3]
 
+        if spatial_prediction["session_uuid"] in LANDSAT_SESSION_UUIDS:
+            spatial_prediction["satellite"] = "landsat8/9"
+        elif spatial_prediction["session_uuid"] in SENTINEL_SESSION_UUIDS:
+            spatial_prediction["satellite"] = "sentinel2a/b"
+        else:
+            spatial_prediction["satellite"] = "unknown"
+
+
     predictions_df = pd.DataFrame.from_records(all_spatial_predictions_list)
     predictions_df = predictions_df[
-        ["lagoslakeid", "date", "max", "min", "mean", "std"]
+        ["lagoslakeid", "date", "max", "min", "mean", "std", "satellite"]
     ]  # Restrict predictions_df to reduce file size
 
     predictions_df["insitu"] = predictions_df.apply(is_lake_row_insitu, axis=1)
