@@ -590,7 +590,13 @@ def export_raster_main_landsat(
     with open(out_filepath, "wb") as f:
         f.write(response.content)
 
-    new_metadata = {"date": date, "id": lakeid, "scale": scale, "satellite": "landsat", "image_index" : image_index}
+    new_metadata = {"date": date, "id": lakeid, "scale": scale, "image_index" : image_index}
+    if "LC08" in image_index:
+        new_metadata["satellite"] = "landsat8"
+    elif "LC09" in image_index:
+        new_metadata["satellite"] = "landsat9"
+    else:
+        raise Exception("Can't determine specific satellite from image index")
     print(new_metadata)
     with rasterio.open(out_filepath, "r+") as dst:
         dst.update_tags(**new_metadata)
