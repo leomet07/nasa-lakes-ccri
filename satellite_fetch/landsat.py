@@ -598,13 +598,11 @@ def export_raster_main_landsat(
     else:
         raise Exception("Can't determine the specific satellite from image index")
     # print(new_metadata)
-    
     with rasterio.open(out_filepath, "r+") as dst:
         dst.update_tags(**new_metadata)
 
-    print(f"Image saved to {out_filepath}")
-
     if shouldVisualize:
+        print(f"Image saved to {out_filepath}")
         print("Saved image metadata: ", new_metadata)
         visualize(out_filepath)
 
