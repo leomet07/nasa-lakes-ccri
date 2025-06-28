@@ -956,14 +956,13 @@ ex. start_date = '2020-07-01'
     end_date = '2020-08-01'
 """
 
-
 def get_image_and_date_from_image_collection(coll, index, shp):
     image = ee.Image(coll.toList(coll.size()).get(index))
+    image_index = image.get("system:index").getInfo()
     date = ee.Date(image.get("system:time_start")).format("YYYY-MM-dd").getInfo()
     image = image.clip(shp)
     image = image.toFloat()
-    return image, date
-
+    return image, image_index, date
 
 def get_raster(start_date, end_date, LakeShp, scale) -> ee.Image:
     date_range = ee.Filter.date(start_date, end_date)
@@ -978,7 +977,7 @@ def get_raster(start_date, end_date, LakeShp, scale) -> ee.Image:
         raise Exception("NO IMAGES FOUND")
 
     for i in range(0, merged_s2_coll_len):
-        image, date = get_image_and_date_from_image_collection(
+        image, image_index, date = get_image_and_date_from_image_collection(
             merged_s2_coll, i, LakeShp
         )
 
@@ -991,7 +990,7 @@ def get_raster(start_date, end_date, LakeShp, scale) -> ee.Image:
         ).getInfo()
 
         if see_if_all_image_bands_valid(min_value):
-            return image, date
+            return image, image_index, date
     # if it made it here, all have blank images (due to NASA JPL aggressive cloud alterer/filter)
     raise Exception("IMAGE IS ALL BLANK :(((")
 
@@ -1077,7 +1076,7 @@ def export_raster_main(
     # print("Lakeshp fetched")
 
     # get raster of lake, inspect to make sure you have 9 bands
-    image, date = get_raster(
+    image, image_index, date = get_raster(
         start_date=start_date, end_date=end_date, LakeShp=LakeShp, scale=scale
     )
 
@@ -1109,8 +1108,15 @@ def export_raster_main(
         "date": date,
         "id": lakeid,
         "scale": scale,
-        "satellite": "sentinel-2",
+        "image_index" : image_index[2:] # remove preface for collection
     }
+    if image_index[:2] == "1_": # first collection in merge, sentinel2a
+        new_metadata["satellite"] = "sentinel2a"
+    elif image_index[:2] == "2_": # second collection in merge, sentinel2b
+        new_metadata["satellite"] = "sentinel2b"
+    else:
+        raise Exception("Can't determine the specific satellite from image index")
+    print(new_metadata)
     with rasterio.open(out_filepath, "r+") as dst:
         dst.update_tags(**new_metadata)
 
