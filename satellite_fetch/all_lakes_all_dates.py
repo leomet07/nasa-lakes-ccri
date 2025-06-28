@@ -1,4 +1,5 @@
 from functions import export_raster_main, open_gee_project
+from landsat import export_raster_main_landsat # open_gee_project is the same for both
 import datetime
 import pandas as pd
 import sys
@@ -22,6 +23,7 @@ def gen_all_lakes_all_dates_params(
     end_date_range,
     df_path,
     frequency: int,
+    satellite
 ):
     print(df_path)
     # read csvs
@@ -59,6 +61,7 @@ def gen_all_lakes_all_dates_params(
                 lakeid,
                 start_date,
                 end_date,
+                satellite
             ]
             all_runs_needed.append(export_raster_main_nice_scale_params)
 
@@ -72,6 +75,7 @@ def run_all_lakes_all_dates(
     end_date_range,
     df_path,
     frequency: int,
+    satellite
 ):
     manager = multiprocessing.Manager()
     scale_cache = manager.dict()  # empty by default
@@ -84,6 +88,7 @@ def run_all_lakes_all_dates(
         end_date_range,
         tidy_df_path,
         frequency,
+        satellite
     )
 
     random.shuffle(all_params_to_pass_in)
@@ -108,8 +113,12 @@ def wrapper_export(args):
 
 
 def export_raster_main_nice_scale(
-    out_dir, filename, project, lakeid: int, start_date, end_date, scale_cache
+    out_dir, filename, project, lakeid: int, start_date, end_date, satellite, scale_cache
 ):
+    if satellite == "sentinel":
+        export_function = export_raster_main
+    elif satellite == "landsat":
+        export_function = export_raster_main_landsat
 
     scale = 20
     # while not successful
@@ -118,7 +127,7 @@ def export_raster_main_nice_scale(
             # If scale has not been determined before
             if lakeid in scale_cache:
                 # print("Using cached scale: ", scale_cache[lakeid])
-                export_raster_main(
+                export_function(
                     out_dir,
                     filename,
                     project,
@@ -128,8 +137,8 @@ def export_raster_main_nice_scale(
                     scale_cache[lakeid],
                 )
                 break
-
-            export_raster_main(
+            
+            export_function(
                 out_dir,
                 filename,
                 project,
@@ -174,6 +183,10 @@ if __name__ == "__main__":
     end_date_range = sys.argv[4]  # STR, in format YYYY-MM-DD
     tidy_df_path = sys.argv[5]
     frequency = int(sys.argv[6])
+    satellite = sys.argv[7]
+
+    if satellite != "landsat" and satellite != "sentinel":
+        raise Exception('Satellite must be either "landsat" or "sentinel"')
 
     open_gee_project(project=project)
 
@@ -184,4 +197,5 @@ if __name__ == "__main__":
         end_date_range,
         tidy_df_path,
         frequency,
+        satellite
     )

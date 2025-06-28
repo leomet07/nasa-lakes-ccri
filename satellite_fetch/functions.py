@@ -1116,7 +1116,8 @@ def export_raster_main(
         new_metadata["satellite"] = "sentinel2b"
     else:
         raise Exception("Can't determine the specific satellite from image index")
-    print(new_metadata)
+    # print(new_metadata)
+
     with rasterio.open(out_filepath, "r+") as dst:
         dst.update_tags(**new_metadata)
 
