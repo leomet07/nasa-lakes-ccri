@@ -1,3 +1,28 @@
+## Landsat8/9 and Sentinel2a/b Satellite Fetching
+Images recieve MAIN correction as well.
+
+## Installation
+
+1. Make a virtual environment
+
+```bash
+python -m venv venv
+```
+
+2. Activate virtual environment
+
+```bash
+source venv/bin/activate
+```
+
+3. Install requirements
+
+```bash
+pip install -r requirements.txt
+```
+
+
+## Examples
 
 **Example to download the first image without cloud cover in an interval with a resolution of 30mby30m per pixel:**
 ```bash
