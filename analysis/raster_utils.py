@@ -93,5 +93,5 @@ if __name__ == "__main__":
     out_file = sys.argv[1]
 
     print(
-        f"Max concentration: {get_max_from_predictions_raster_file(out_file)[0]} µg/L"
+        f"Max concentration: {get_analytics_from_predictions_raster_file(out_file)[0]} µg/L"
     )
