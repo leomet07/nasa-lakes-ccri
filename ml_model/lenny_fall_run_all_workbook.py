@@ -223,20 +223,20 @@ def upload_spatial_map(lakeid : int, raster_image_path: str, display_image_path 
 
     lake_db_id = filtered_list[0]["_id"]
 
-    dateiso = datetime.strptime(datestr, '%Y-%m-%d').isoformat()
+    date_obj = datetime.strptime(datestr, '%Y-%m-%d')
     # Step 2
 
     body = {
         "raster_image" :  os.path.basename(raster_image_path),
         "display_image" : os.path.basename(display_image_path),
-        "date" : dateiso, # utc
+        "date" : date_obj, # datetime (-> mongodate bson) type
         "corner1latitude": corners[0][0],
         "corner1longitude": corners[0][1],
         "corner2latitude": corners[1][0],
         "corner2longitude": corners[1][1],
         "scale" : scale,
         "session_uuid" : session_uuid,
-        "lake" : lake_db_id,
+        "lake" : lake_db_id, # bson type
         "lagoslakeid" : lakeid
     }
     mongo_spatial_predictions_collection.insert_one(body)
