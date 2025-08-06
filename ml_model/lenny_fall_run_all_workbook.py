@@ -280,7 +280,7 @@ def upload_spatial_map(
         "corner1longitude": corners[0][1],
         "corner2latitude": corners[1][0],
         "corner2longitude": corners[1][1],
-        "scale": scale,
+        "scale": int(scale),
         "session_uuid": session_uuid,
         "lake": lake_db_id,  # bson type
         "lagoslakeid": lakeid,
