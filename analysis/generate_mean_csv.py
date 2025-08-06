@@ -23,9 +23,6 @@ ACCESS_STORAGE_MODE = (
 USE_CACHED_MEANS = (os.getenv("USE_CACHED_MEANS") or "").lower() == "true"
 CACHED_MEANS_SAVE_FILE = "summer_means_df.joblib"
 
-LANDSAT_SESSION_UUIDS = os.getenv("LANDSAT_SESSION_UUIDS").split(",")
-SENTINEL_SESSION_UUIDS = os.getenv("SENTINEL_SESSION_UUIDS").split(",")
-
 if not os.path.exists(SAVED_PLOTS_FOLDER_PATH):
     os.makedirs(SAVED_PLOTS_FOLDER_PATH)
 
@@ -41,7 +38,9 @@ else:
         spatial_prediction = all_spatial_predictions_list[index]
         if ACCESS_STORAGE_MODE == "local":
             file_path = os.path.join(
-                TIF_OUT_FILEPATH, f"tif_out_{spatial_prediction["session_uuid"]}", spatial_prediction["raster_image"]
+                TIF_OUT_FILEPATH,
+                f"tif_out_{spatial_prediction["session_uuid"]}",
+                spatial_prediction["raster_image"],
             )
             try:
                 results_array = raster_utils.get_analytics_from_predictions_raster_file(
@@ -60,14 +59,6 @@ else:
         spatial_prediction["mean"] = results_array[2]
         spatial_prediction["std"] = results_array[3]
 
-        if spatial_prediction["session_uuid"] in LANDSAT_SESSION_UUIDS:
-            spatial_prediction["satellite"] = "landsat8/9"
-        elif spatial_prediction["session_uuid"] in SENTINEL_SESSION_UUIDS:
-            spatial_prediction["satellite"] = "sentinel2a/b"
-        else:
-            spatial_prediction["satellite"] = "unknown"
-
-
     predictions_df = pd.DataFrame.from_records(all_spatial_predictions_list)
     predictions_df = predictions_df[
         ["lagoslakeid", "date", "max", "min", "mean", "std", "satellite"]
@@ -76,7 +67,7 @@ else:
     predictions_df["insitu"] = predictions_df.apply(is_lake_row_insitu, axis=1)
     joblib.dump(predictions_df, CACHED_MEANS_SAVE_FILE)
 
-predictions_df['date'] = pd.to_datetime(predictions_df['date']) # ensure it is a date
+predictions_df["date"] = pd.to_datetime(predictions_df["date"])  # ensure it is a date
 
 predictions_df.to_csv(
     "summer_means.csv", date_format=f"%Y%m%d", float_format="%f", index=False

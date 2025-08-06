@@ -25,11 +25,7 @@ def run_analytics_on_raster(raster_array):
 
     mean_val = np.nanmean(flatten_raster_array)  # mean EXCLUDING nans
     stdev = np.nanstd(flatten_raster_array)  # std EXCLUDING nans
-
-    # top_ten_highest_indices = np.argpartition(flatten_raster_array, -10)[-10:]
-    # top_ten = flatten_raster_array[top_ten_highest_indices]
-    # top_ten.sort()
-    # print("Top ten: ", top_ten)
+    # however, these values CAN be nan if the array is empty
 
     return max_val, min_val, mean_val, stdev
 
